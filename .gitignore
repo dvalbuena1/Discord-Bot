@@ -1,0 +1,8 @@
+# dotenv environment variables file
+.env
+
+# Ignore built ts files
+dist/**/*
+
+# Dependency directory
+node_modules
