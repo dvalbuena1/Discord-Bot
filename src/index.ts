@@ -2,6 +2,7 @@ import * as dotenv from "dotenv";
 import * as fs from "fs";
 import { Intents, Collection, Client, Message } from "discord.js";
 import { Command } from "./commands/comands.interface";
+import keys from "./commands/mapKeys";
 dotenv.config();
 const client = new Client({
   intents: [
@@ -14,22 +15,34 @@ const client = new Client({
 const commands = new Collection<string, Command>();
 const commandFiles = fs
   .readdirSync(__dirname + "\\commands\\")
-  .filter((file) => file.endsWith(".ts") && !file.includes("interface"));
+  .filter((file) => !file.includes("interface") && file != "mapKeys.ts")
+  .map((file) => {
+    const isDir = fs.lstatSync(__dirname + "\\commands\\" + file).isDirectory();
+    if (isDir) {
+      return file + "/index.ts";
+    }
+    return file;
+  });
 
-for (const file of commandFiles) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const command = require(`./commands/${file}`);
-  commands.set(command.name, command);
-}
-
+const loadCommands = async () => {
+  for (const file of commandFiles) {
+    const classCommand = await import(`./commands/${file}`);
+    commands.set(classCommand.default.name, new classCommand.default());
+  }
+};
+loadCommands();
 const prefix = ">";
+
 client.on("messageCreate", (message: Message) => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;
 
   const args = message.content.slice(prefix.length).split(/ +/);
-  const command = args.shift()?.toLowerCase();
+  let command = args.shift()?.toLowerCase();
   if (command) {
-    commands.get(command)?.execute(message, args);
+    command = keys.get(command);
+    if (command) {
+      commands.get(command)?.execute(message, args);
+    }
   }
 });
 
