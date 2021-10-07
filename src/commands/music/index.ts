@@ -1,5 +1,5 @@
 import { joinVoiceChannel } from "@discordjs/voice";
-import { GuildMember, Message, MessageEmbed } from "discord.js";
+import { GuildMember, Message, MessageEmbed, VoiceChannel } from "discord.js";
 import Collection from "@discordjs/collection";
 import { Command } from "../comands.interface";
 import { MusicSubscription } from "./suscription";
@@ -54,7 +54,15 @@ export default class Music implements Command {
               channelId: channel?.id || "",
               guildId: channel?.guild.id || "",
               adapterCreator: channel?.guild.voiceAdapterCreator || Object,
-            })
+            }),
+            async () => {
+              subscription?.voiceConnection.destroy();
+              this.mapQueues.delete(message.guildId || "");
+              await message.channel.send(
+                "I left the voice channel because I was inactive for too long"
+              );
+            },
+            <VoiceChannel>message.member.voice.channel
           );
           subscription.voiceConnection.on("error", console.warn);
           this.mapQueues.set(message.guildId, subscription);

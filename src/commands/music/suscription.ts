@@ -9,6 +9,7 @@ import {
   VoiceConnectionDisconnectReason,
   VoiceConnectionStatus,
 } from "@discordjs/voice";
+import { VoiceChannel } from "discord.js";
 import { promisify } from "util";
 import { Track } from "./track";
 
@@ -16,13 +17,23 @@ const wait = promisify(setTimeout);
 export class MusicSubscription {
   public readonly voiceConnection: VoiceConnection;
   public readonly audioPlayer: AudioPlayer;
+  public readonly voiceChannel: VoiceChannel;
+  public leaveChannel: () => void;
   public queueLock = false;
   public readyLock = false;
   public queue: Track[];
   public index: number;
-  public constructor(voiceConnection: VoiceConnection) {
+  public timeOutIdle: NodeJS.Timeout | undefined;
+  public timeOutAlone: NodeJS.Timeout | undefined;
+  public constructor(
+    voiceConnection: VoiceConnection,
+    leaveChannel: () => void,
+    voiceChannel: VoiceChannel
+  ) {
     this.voiceConnection = voiceConnection;
+    this.voiceChannel = voiceChannel;
     this.audioPlayer = createAudioPlayer();
+    this.leaveChannel = leaveChannel;
     this.queue = [];
     this.index = 0;
     this.voiceConnection.on("stateChange", async (_, newState) => {
@@ -103,6 +114,11 @@ export class MusicSubscription {
       ) {
         // If the Idle state is entered from a non-Idle state, it means that an audio resource has finished playing.
         // The queue is then processed to start playing the next track, if one is available.
+        if (!this.timeOutAlone && voiceChannel.members.size === 1) {
+          this.timeOutAlone = setTimeout(this.leaveChannel, 600000);
+        } else if (voiceChannel.members.size > 1 && this.timeOutAlone) {
+          clearTimeout(this.timeOutAlone);
+        }
         void this.processQueue();
       } else if (newState.status === AudioPlayerStatus.Playing) {
         // If the Playing state has been entered, then a new track has started playback.
@@ -138,9 +154,17 @@ export class MusicSubscription {
 
   private async processQueue(): Promise<void> {
     // If the queue is locked (already being processed)
-    if (this.queueLock || this.queue.length === this.index) {
+    if (this.queueLock) {
       return;
     }
+
+    if (this.queue.length === this.index) {
+      this.timeOutIdle = setTimeout(this.leaveChannel, 600000);
+      return;
+    }
+
+    clearTimeout(this.timeOutIdle!);
+
     // Lock the queue to guarantee safe access
     this.queueLock = true;
 
