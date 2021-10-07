@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index",
+    "start": "npx node dist/index",
     "dev": "nodemon src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint src --ext .ts",
@@ -17,11 +17,22 @@
   "author": "Daniel Valbuena Bautista",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/opus": "^0.6.0",
+    "@discordjs/voice": "^0.6.0",
     "@types/node": "^16.10.2",
+    "abort-controller": "^3.0.0",
     "discord-api-types": "^0.23.1",
     "discord.js": "^13.1.0",
     "dotenv": "^10.0.0",
-    "typescript": "^4.4.3"
+    "ffmpeg-static": "^4.4.0",
+    "libsodium-wrappers": "^0.7.9",
+    "node": "^14.18.0",
+    "opusscript": "0.0.8",
+    "sodium": "^3.0.2",
+    "tweetnacl": "^1.0.3",
+    "typescript": "^4.4.3",
+    "ytdl-core": "^4.9.1",
+    "ytsr": "^3.5.3"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^4.32.0",

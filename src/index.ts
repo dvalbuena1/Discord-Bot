@@ -1,9 +1,11 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs";
+global.AbortController = require("abort-controller");
 import { Intents, Collection, Client, Message } from "discord.js";
 import { Command } from "./commands/comands.interface";
 import keys from "./commands/mapKeys";
 dotenv.config();
+
 const client = new Client({
   intents: [
     Intents.FLAGS.GUILD_VOICE_STATES,
@@ -15,11 +17,11 @@ const client = new Client({
 const commands = new Collection<string, Command>();
 const commandFiles = fs
   .readdirSync(__dirname + "\\commands\\")
-  .filter((file) => !file.includes("interface") && file != "mapKeys.ts")
+  .filter((file) => !file.includes("interface") && !file.includes("mapKeys"))
   .map((file) => {
     const isDir = fs.lstatSync(__dirname + "\\commands\\" + file).isDirectory();
     if (isDir) {
-      return file + "/index.ts";
+      return file + "/index";
     }
     return file;
   });
@@ -31,18 +33,16 @@ const loadCommands = async () => {
   }
 };
 loadCommands();
-const prefix = ">";
+export const prefix = ">";
 
 client.on("messageCreate", (message: Message) => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;
 
   const args = message.content.slice(prefix.length).split(/ +/);
-  let command = args.shift()?.toLowerCase();
+  let command = args[0].toLowerCase();
   if (command) {
-    command = keys.get(command);
-    if (command) {
-      commands.get(command)?.execute(message, args);
-    }
+    command = keys.get(command) || "";
+    commands.get(command)?.execute(message, args);
   }
 });
 
