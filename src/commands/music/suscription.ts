@@ -21,6 +21,7 @@ export class MusicSubscription {
   public leaveChannel: () => void;
   public queueLock = false;
   public readyLock = false;
+  public loop = false;
   public queue: Track[];
   public index: number;
   public timeOutIdle: NodeJS.Timeout | undefined;
@@ -152,6 +153,11 @@ export class MusicSubscription {
     this.queueLock = false;
   }
 
+  public loopQueue(): boolean {
+    this.loop = !this.loop;
+    return this.loop;
+  }
+
   private async processQueue(): Promise<void> {
     // If the queue is locked (already being processed)
     if (this.queueLock) {
@@ -159,8 +165,12 @@ export class MusicSubscription {
     }
 
     if (this.queue.length === this.index) {
-      this.timeOutIdle = setTimeout(this.leaveChannel, 600000);
-      return;
+      if (this.loop) {
+        this.index = 0;
+      } else if (!this.timeOutAlone) {
+        this.timeOutIdle = setTimeout(this.leaveChannel, 600000);
+        return;
+      }
     }
 
     clearTimeout(this.timeOutIdle!);
@@ -179,7 +189,7 @@ export class MusicSubscription {
       this.index++;
     } catch (error) {
       // If an error occurred, try the next item of the queue instead
-      console.log(error);
+      nextTrack.onError(error as Error);
       this.queueLock = false;
       this.index++;
       return this.processQueue();

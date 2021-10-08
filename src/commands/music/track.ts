@@ -68,4 +68,18 @@ export class Track implements TrackData {
     }
     return null;
   }
+
+  public static async fromUrlYoutube(
+    url: string,
+    methods: Pick<Track, "onStart" | "onFinish" | "onError">
+  ): Promise<Track | null> {
+    const info = await ytdl.getInfo(url);
+    return new Track({
+      url: info.videoDetails.video_url,
+      title: info.videoDetails.title,
+      onStart: methods.onStart,
+      onFinish: methods.onFinish,
+      onError: methods.onError,
+    });
+  }
 }
