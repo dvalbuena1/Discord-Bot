@@ -1,6 +1,5 @@
 import {
   AudioPlayer,
-  AudioPlayerIdleState,
   AudioPlayerStatus,
   AudioResource,
   createAudioPlayer,

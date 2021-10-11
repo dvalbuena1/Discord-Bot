@@ -43,7 +43,8 @@ export const getTracks = async (
     onStart(track: Track) {
       const onStartEmbed = new MessageEmbed()
         .setTitle("Now playing")
-        .setDescription(`[${track?.title}](${track?.url})` || "");
+        .setDescription(`[${track?.title}](${track?.url})` || "")
+        .setThumbnail(track.thumbnail!);
 
       channel.send({ embeds: [onStartEmbed] });
     },
@@ -94,7 +95,12 @@ export const getTracks = async (
 
     for (let index = 0; index < tracksResult.items.length; index++) {
       const element = tracksResult.items[index];
-      const track = new Track(element.url, element?.title, functionsTrack);
+      const track = new Track(
+        element.url,
+        element?.title,
+        element.bestThumbnail.url || undefined,
+        functionsTrack
+      );
       tracks.push(track);
     }
     const onQueuedEmbed = new MessageEmbed().setDescription(
@@ -150,6 +156,7 @@ export const getTracks = async (
         const track = new Track(
           undefined,
           `${element.track.name} - ${artists}`,
+          undefined,
           functionsTrack
         );
         tracks.push(track);

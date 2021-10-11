@@ -4,10 +4,11 @@ import {
   demuxProbe,
 } from "@discordjs/voice";
 import ytdl from "ytdl-core";
-import ytsr, { Item, Result, Video } from "ytsr";
+import ytsr, { Video } from "ytsr";
 
 interface TrackData {
   url: string | undefined;
+  thumbnail: string | undefined;
   title: string;
   onStart: () => void;
   onFinish: () => void;
@@ -22,6 +23,7 @@ interface functionsTrack {
 
 export class Track implements TrackData {
   public url: string | undefined;
+  public thumbnail: string | undefined;
   public title: string;
   public readonly onStart: () => void;
   public readonly onFinish: () => void;
@@ -30,10 +32,12 @@ export class Track implements TrackData {
   public constructor(
     url: string | undefined,
     title: string,
+    thumbnail: string | undefined,
     { onStart, onFinish, onError }: functionsTrack
   ) {
     this.url = url;
     this.title = title;
+    this.thumbnail = thumbnail;
     this.onStart = () => onStart(this);
     this.onFinish = () => onFinish(this);
     this.onError = (error) => onError(this, error);
@@ -63,6 +67,7 @@ export class Track implements TrackData {
         Track.getVideo(this.title).then((video) => {
           this.title = video.title;
           this.url = video.url;
+          this.thumbnail = video.thumbnail;
           audioResource();
         });
       } else {
@@ -77,7 +82,11 @@ export class Track implements TrackData {
     if (filter != null) {
       const info = await ytsr(filter.url!, { limit: 1 });
       const videos = info.items as Video[];
-      return { url: videos[0].url, title: videos[0].title };
+      return {
+        url: videos[0].url,
+        title: videos[0].title,
+        thumbnail: videos[0].bestThumbnail.url,
+      };
     }
     return null;
   }
@@ -87,7 +96,7 @@ export class Track implements TrackData {
     methods: functionsTrack
   ): Promise<Track | null> {
     const video = await this.getVideo(text);
-    return new Track(video.url, video.title, methods);
+    return new Track(video.url, video.title, video.thumbnail, methods);
   }
 
   public static async fromUrlYoutube(
@@ -98,6 +107,7 @@ export class Track implements TrackData {
     return new Track(
       info.videoDetails.video_url,
       info.videoDetails.title,
+      info.videoDetails.thumbnails[0].url,
       methods
     );
   }
