@@ -1,23 +1,9 @@
 import { joinVoiceChannel } from "@discordjs/voice";
-import {
-  GuildMember,
-  Message,
-  MessageEmbed,
-  Sticker,
-  TextBasedChannels,
-  VoiceChannel,
-} from "discord.js";
+import { GuildMember, Message, MessageEmbed, VoiceChannel } from "discord.js";
 import Collection from "@discordjs/collection";
 import { Command } from "../comands.interface";
 import { MusicSubscription } from "./suscription";
-import { prefix } from "../../index";
-import { Track } from "./track";
-import ytpl from "ytpl";
-
-enum Site {
-  Youtube = 1,
-  YoutubePlaylist = 2,
-}
+import { getTracks } from "./factoryTrack";
 
 const keys: Collection<string, string> = new Collection<string, string>();
 keys.set("p", "play");
@@ -77,99 +63,31 @@ export default class Music implements Command {
             async () => {
               subscription?.voiceConnection.destroy();
               this.mapQueues.delete(message.guildId || "");
-              await message.channel.send(
+              const idleEmbed = new MessageEmbed().setDescription(
                 "I left the voice channel because I was inactive for too long"
               );
+              await message.channel.send({ embeds: [idleEmbed] });
             },
             <VoiceChannel>message.member.voice.channel
           );
           subscription.voiceConnection.on("error", console.warn);
           this.mapQueues.set(message.guildId, subscription);
         } else {
-          await message.channel.send(
+          const connectedEmbed = new MessageEmbed().setDescription(
             "You have to be connected to a voice channel before you can use this command!"
           );
+          await message.channel.send({ embeds: [connectedEmbed] });
           return;
         }
       }
 
       const text = args.join(" ");
-      const site: Site | null = this.isUrl(text);
-      let track: Track | null | undefined;
-      const functionsTrack = {
-        onStart() {
-          const onStartEmbed = new MessageEmbed()
-            .setTitle("Now playing")
-            .setDescription(`[${track?.title}](${track?.url})` || "");
+      const tracks = await getTracks(text, message.channel);
 
-          message.channel.send({ embeds: [onStartEmbed] });
-        },
-        onFinish() {
-          console.log("Finish");
-        },
-        onError(error: Error) {
-          const onErrorEmbed = new MessageEmbed()
-            .setTitle("An error occurred while playing")
-            .setDescription(
-              `[${track?.title}](${track?.url}) <br/> ${error.message}` || ""
-            );
-
-          message.channel.send({ embeds: [onErrorEmbed] });
-        },
-      };
-
-      if (!site) {
-        console.log("Texto");
-        track = await Track.fromText(text, functionsTrack);
-      } else if (site === Site.Youtube) {
-        console.log("Youtube");
-        track = await Track.fromUrlYoutube(text, functionsTrack);
-      } else if (site === Site.YoutubePlaylist) {
-        console.log("YoutubePlaylist");
-        const listId = await ytpl.getPlaylistID(text);
-        const tracks = await ytpl(listId);
-
-        const onQueuedEmbed = new MessageEmbed().setDescription(
-          `Queued **${tracks.items.length}** tracks` || ""
-        );
-
-        await message.channel.send({ embeds: [onQueuedEmbed] });
-        for (let index = 0; index < tracks.items.length; index++) {
-          const element = tracks.items[index];
-          const functionsTrackLoop = {
-            onStart() {
-              const onStartEmbed = new MessageEmbed()
-                .setTitle("Now playing")
-                .setDescription(`[${element?.title}](${element?.url})` || "");
-
-              message.channel.send({ embeds: [onStartEmbed] });
-            },
-            onFinish() {
-              console.log("Finish");
-            },
-            onError(error: Error) {
-              const onErrorEmbed = new MessageEmbed()
-                .setTitle("An error occurred while playing")
-                .setDescription(
-                  `[${element?.title}](${element?.url}) <br/> ${error.message}` ||
-                    ""
-                );
-
-              message.channel.send({ embeds: [onErrorEmbed] });
-            },
-          };
-          track = await Track.fromUrlYoutube(element.url, functionsTrackLoop);
-          if (track) {
-            subscription.enqueue(track);
-          } else {
-            console.log("Error enqueue");
-          }
+      if (tracks) {
+        for (const track of tracks) {
+          subscription.enqueue(track);
         }
-        return;
-      }
-
-      if (track) {
-        subscription.enqueue(track);
       } else {
         console.log("Error enqueue");
       }
@@ -181,10 +99,17 @@ export default class Music implements Command {
       const subscription = this.mapQueues.get(message.guildId);
       if (subscription) {
         subscription.next(async () => {
-          await message.channel.send("No more songs in the queue");
+          const endQueueEmbed = new MessageEmbed().setDescription(
+            "No more songs left in the queue"
+          );
+          await message.channel.send({ embeds: [endQueueEmbed] });
         });
       } else {
-        await message.channel.send("I'm not in the voice channel right now");
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
   }
@@ -196,7 +121,11 @@ export default class Music implements Command {
         subscription.voiceConnection.destroy();
         this.mapQueues.delete(message.guildId);
       } else {
-        await message.channel.send("I'm not in the voice channel right now");
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
   }
@@ -220,23 +149,12 @@ export default class Music implements Command {
           message.channel.send({ embeds: [loopOnEmbed] });
         }
       } else {
-        await message.channel.send("I'm not in the voice channel right now");
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
-  }
-
-  private isUrl(text: string): Site | null {
-    const regexYoutubePlaylist =
-      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|watch\?.+&v=))((\w|-){11})(?:&list=)((\w|-){18})(?:\S+)?/;
-    if (regexYoutubePlaylist.test(text)) {
-      return Site.YoutubePlaylist;
-    }
-
-    const regexYoutube =
-      /(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?/;
-    if (regexYoutube.test(text)) {
-      return Site.Youtube;
-    }
-    return null;
   }
 }

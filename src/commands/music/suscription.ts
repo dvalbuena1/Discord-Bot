@@ -140,7 +140,11 @@ export class MusicSubscription {
 
   public next(callback: () => void): void {
     if (this.queue.length === this.index) {
-      callback();
+      if (this.audioPlayer.state.status === AudioPlayerStatus.Playing) {
+        this.audioPlayer.stop(true);
+      } else if (this.audioPlayer.state.status === AudioPlayerStatus.Idle) {
+        callback();
+      }
     } else {
       this.processQueue();
     }
