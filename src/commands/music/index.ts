@@ -20,6 +20,9 @@ keys.set("loop", "loop");
 
 keys.set("s", "shuffle");
 keys.set("shuffle", "shuffle");
+
+keys.set("q", "queue");
+keys.set("queue", "queue");
 export default class Music implements Command {
   public description;
   public mapQueues: Map<string, MusicSubscription>;
@@ -47,6 +50,9 @@ export default class Music implements Command {
         break;
       case "shuffle":
         this.shuffleCommand(message);
+        break;
+      case "queue":
+        this.queueCommand(message);
         break;
     }
   }
@@ -172,6 +178,22 @@ export default class Music implements Command {
       if (subscription) {
         subscription.shuffleQueue();
         await message.react("🔀");
+      } else {
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
+      }
+    }
+  }
+
+  private async queueCommand(message: Message): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        const queue = subscription.getQueue();
+        await message.channel.send(`\`\`\`js\n ${queue} \`\`\``);
       } else {
         const notVoiceChannelEmbed = new MessageEmbed().setDescription(
           "I'm not in the voice channel right now"

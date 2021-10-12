@@ -174,6 +174,26 @@ export class MusicSubscription {
     this.queueLock = false;
   }
 
+  public getQueue(): string {
+    let resQueue = "";
+    for (let index = 0; index < this.queue.length; index++) {
+      const element = this.queue[index];
+      const concat = `${index + 1}) ${
+        element.title.length > 38
+          ? element.title.slice(0, 37) + "…"
+          : element.title
+      } \n`;
+      if (this.index === index) {
+        resQueue += "     ⬐ current track \n";
+        resQueue += concat;
+        resQueue += "     ⬑ current track \n";
+      } else {
+        resQueue += concat;
+      }
+    }
+    return resQueue;
+  }
+
   private async processQueue(): Promise<void> {
     // If the queue is locked (already being processed)
     if (this.queueLock) {
