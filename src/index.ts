@@ -33,7 +33,7 @@ const loadCommands = async () => {
   }
 };
 loadCommands();
-export const prefix = ">";
+export const prefix = "-";
 
 client.on("messageCreate", (message: Message) => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;

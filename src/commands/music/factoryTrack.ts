@@ -148,7 +148,6 @@ export const getTracks = async (
         index++
       ) {
         const element = (resPlaylist.data as any).tracks.items[index];
-        console.log(element.track.artists);
         const artists = (element.track.artists as Array<any>)
           .map((e) => e.name)
           .join(", ");

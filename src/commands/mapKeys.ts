@@ -10,6 +10,8 @@ keys.set("n", "Music");
 keys.set("next", "Music");
 keys.set("l", "Music");
 keys.set("loop", "Music");
+keys.set("s", "Music");
+keys.set("shuffle", "Music");
 //Ping commands
 keys.set("ping", "Ping");
 

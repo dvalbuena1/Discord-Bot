@@ -17,6 +17,9 @@ keys.set("next", "next");
 
 keys.set("l", "loop");
 keys.set("loop", "loop");
+
+keys.set("s", "shuffle");
+keys.set("shuffle", "shuffle");
 export default class Music implements Command {
   public description;
   public mapQueues: Map<string, MusicSubscription>;
@@ -41,6 +44,9 @@ export default class Music implements Command {
         break;
       case "loop":
         this.loopCommand(message);
+        break;
+      case "shuffle":
+        this.shuffleCommand(message);
         break;
     }
   }
@@ -102,6 +108,7 @@ export default class Music implements Command {
           const endQueueEmbed = new MessageEmbed().setDescription(
             "No more songs left in the queue"
           );
+          await message.react("👌");
           await message.channel.send({ embeds: [endQueueEmbed] });
         });
       } else {
@@ -109,7 +116,7 @@ export default class Music implements Command {
           "I'm not in the voice channel right now"
         );
 
-        message.channel.send({ embeds: [notVoiceChannelEmbed] });
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
   }
@@ -120,12 +127,13 @@ export default class Music implements Command {
       if (subscription) {
         subscription.voiceConnection.destroy();
         this.mapQueues.delete(message.guildId);
+        await message.react("👋");
       } else {
         const notVoiceChannelEmbed = new MessageEmbed().setDescription(
           "I'm not in the voice channel right now"
         );
 
-        message.channel.send({ embeds: [notVoiceChannelEmbed] });
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
   }
@@ -140,20 +148,36 @@ export default class Music implements Command {
             "Now looping the **queue**"
           );
 
-          message.channel.send({ embeds: [loopOnEmbed] });
+          await message.channel.send({ embeds: [loopOnEmbed] });
         } else {
           const loopOnEmbed = new MessageEmbed().setDescription(
             "Looping is now **disable**"
           );
 
-          message.channel.send({ embeds: [loopOnEmbed] });
+          await message.channel.send({ embeds: [loopOnEmbed] });
         }
       } else {
         const notVoiceChannelEmbed = new MessageEmbed().setDescription(
           "I'm not in the voice channel right now"
         );
 
-        message.channel.send({ embeds: [notVoiceChannelEmbed] });
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
+      }
+    }
+  }
+
+  private async shuffleCommand(message: Message): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        subscription.shuffleQueue();
+        await message.react("🔀");
+      } else {
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
       }
     }
   }

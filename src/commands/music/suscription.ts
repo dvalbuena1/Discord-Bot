@@ -161,6 +161,19 @@ export class MusicSubscription {
     return this.loop;
   }
 
+  public shuffleQueue(): void {
+    this.queueLock = true;
+    for (let index = 0; index < this.queue.length; index++) {
+      const randomFloat = Math.random();
+      const randomPos = Math.floor(randomFloat * this.queue.length);
+      [this.queue[index], this.queue[randomPos]] = [
+        this.queue[randomPos],
+        this.queue[index],
+      ];
+    }
+    this.queueLock = false;
+  }
+
   private async processQueue(): Promise<void> {
     // If the queue is locked (already being processed)
     if (this.queueLock) {
