@@ -14,6 +14,8 @@ keys.set("s", "Music");
 keys.set("shuffle", "Music");
 keys.set("q", "Music");
 keys.set("queue", "Music");
+keys.set("j", "Music");
+keys.set("jump", "Music");
 //Ping commands
 keys.set("ping", "Ping");
 

@@ -23,6 +23,9 @@ keys.set("shuffle", "shuffle");
 
 keys.set("q", "queue");
 keys.set("queue", "queue");
+
+keys.set("j", "jump");
+keys.set("jump", "jump");
 export default class Music implements Command {
   public description;
   public mapQueues: Map<string, MusicSubscription>;
@@ -53,6 +56,9 @@ export default class Music implements Command {
         break;
       case "queue":
         this.queueCommand(message);
+        break;
+      case "jump":
+        this.jumpCommand(message, args);
         break;
     }
   }
@@ -193,7 +199,37 @@ export default class Music implements Command {
       const subscription = this.mapQueues.get(message.guildId);
       if (subscription) {
         const queue = subscription.getQueue();
-        await message.channel.send(`\`\`\`js\n ${queue} \`\`\``);
+        await message.channel.send(`\`\`\`js\n${queue} \`\`\``);
+      } else {
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
+      }
+    }
+  }
+
+  private async jumpCommand(message: Message, args: string[]): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        const text = args[0];
+        const integer = parseInt(text, 10) - 1;
+
+        if (
+          !isNaN(integer) &&
+          integer < subscription.queue.length &&
+          integer >= 0
+        ) {
+          subscription.jump(integer);
+        } else {
+          const isNaNChannelEmbed = new MessageEmbed()
+            .setDescription("Please enter a valid number!")
+            .setColor("#ff3333");
+
+          await message.channel.send({ embeds: [isNaNChannelEmbed] });
+        }
       } else {
         const notVoiceChannelEmbed = new MessageEmbed().setDescription(
           "I'm not in the voice channel right now"

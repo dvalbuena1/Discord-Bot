@@ -180,10 +180,10 @@ export class MusicSubscription {
       const element = this.queue[index];
       const concat = `${index + 1}) ${
         element.title.length > 38
-          ? element.title.slice(0, 37) + "…"
+          ? element.title.slice(0, 37).trim() + "…"
           : element.title
       } \n`;
-      if (this.index === index) {
+      if (this.index - 1 === index) {
         resQueue += "     ⬐ current track \n";
         resQueue += concat;
         resQueue += "     ⬑ current track \n";
@@ -192,6 +192,11 @@ export class MusicSubscription {
       }
     }
     return resQueue;
+  }
+
+  public jump(newIndex: number): void {
+    this.index = newIndex;
+    this.processQueue();
   }
 
   private async processQueue(): Promise<void> {
