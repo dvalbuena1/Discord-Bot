@@ -16,10 +16,10 @@ const client = new Client({
 
 const commands = new Collection<string, Command>();
 const commandFiles = fs
-  .readdirSync(__dirname + "\\commands\\")
+  .readdirSync(__dirname + "/commands/")
   .filter((file) => !file.includes("interface") && !file.includes("mapKeys"))
   .map((file) => {
-    const isDir = fs.lstatSync(__dirname + "\\commands\\" + file).isDirectory();
+    const isDir = fs.lstatSync(__dirname + "/commands/" + file).isDirectory();
     if (isDir) {
       return file + "/index";
     }
