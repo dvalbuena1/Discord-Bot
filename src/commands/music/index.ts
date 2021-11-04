@@ -65,44 +65,43 @@ export default class Music implements Command {
 
   private async playCommand(message: Message, args: string[]): Promise<void> {
     if (message.guildId) {
-      let subscription = this.mapQueues.get(message.guildId);
-      if (!subscription) {
-        if (
-          message.member instanceof GuildMember &&
-          message.member.voice.channel
-        ) {
-          const channel = message.member?.voice?.channel;
-          subscription = new MusicSubscription(
-            joinVoiceChannel({
-              channelId: channel?.id || "",
-              guildId: channel?.guild.id || "",
-              adapterCreator: channel?.guild.voiceAdapterCreator || Object,
-            }),
-            async () => {
-              subscription?.voiceConnection.destroy();
-              this.mapQueues.delete(message.guildId || "");
-              const idleEmbed = new MessageEmbed().setDescription(
-                "I left the voice channel because I was inactive for too long"
-              );
-              await message.channel.send({ embeds: [idleEmbed] });
-            },
-            <VoiceChannel>message.member.voice.channel
-          );
-          subscription.voiceConnection.on("error", console.warn);
-          this.mapQueues.set(message.guildId, subscription);
-        } else {
-          const connectedEmbed = new MessageEmbed().setDescription(
-            "You have to be connected to a voice channel before you can use this command!"
-          );
-          await message.channel.send({ embeds: [connectedEmbed] });
-          return;
-        }
-      }
-
       const text = args.join(" ");
       const tracks = await getTracks(text, message.channel);
-
       if (tracks) {
+        let subscription = this.mapQueues.get(message.guildId);
+        if (!subscription) {
+          if (
+            message.member instanceof GuildMember &&
+            message.member.voice.channel
+          ) {
+            const channel = message.member?.voice?.channel;
+            subscription = new MusicSubscription(
+              joinVoiceChannel({
+                channelId: channel?.id || "",
+                guildId: channel?.guild.id || "",
+                adapterCreator: channel?.guild.voiceAdapterCreator || Object,
+              }),
+              async () => {
+                subscription?.voiceConnection.destroy();
+                this.mapQueues.delete(message.guildId || "");
+                const idleEmbed = new MessageEmbed().setDescription(
+                  "I left the voice channel because I was inactive for too long"
+                );
+                await message.channel.send({ embeds: [idleEmbed] });
+              },
+              <VoiceChannel>message.member.voice.channel
+            );
+            subscription.voiceConnection.on("error", console.warn);
+            this.mapQueues.set(message.guildId, subscription);
+          } else {
+            const connectedEmbed = new MessageEmbed().setDescription(
+              "You have to be connected to a voice channel before you can use this command!"
+            );
+            await message.channel.send({ embeds: [connectedEmbed] });
+            return;
+          }
+        }
+
         for (const track of tracks) {
           subscription.enqueue(track);
         }

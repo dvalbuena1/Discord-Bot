@@ -6,6 +6,7 @@ enum Site {
   Youtube = 1,
   YoutubePlaylist = 2,
   SpotifyPlaylist = 3,
+  Invalid = 4,
 }
 const regexYoutubePlaylist1 =
   /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|watch\?.+&v=))((\w|-){11})(?:&list=)((\w|-){18})(?:\S+)?/;
@@ -18,6 +19,9 @@ const regexYoutube =
 const regexSpotify =
   /(?:https?:\/\/)?(?:www\.)?(?:open\.spotify\.com\/playlist\/)(\w{22})(?:\S+)?/;
 
+const regexAnyUrl =
+  /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)/;
+
 const isUrl = (text: string): Site | null => {
   if (regexYoutubePlaylist1.test(text) || regexYoutubePlaylist2.test(text)) {
     return Site.YoutubePlaylist;
@@ -29,6 +33,10 @@ const isUrl = (text: string): Site | null => {
 
   if (regexSpotify.test(text)) {
     return Site.SpotifyPlaylist;
+  }
+
+  if (regexAnyUrl.test(text)) {
+    return Site.Invalid;
   }
   return null;
 };
@@ -63,15 +71,37 @@ export const getTracks = async (
     },
   };
 
-  if (!site) {
+  if (site === Site.Invalid) {
+    const onErrorEmbed = new MessageEmbed()
+      .setTitle("Invalid URL")
+      .setDescription(
+        "Try with Youtube Videos, Youtube or Spotify Playlist or just text"
+      )
+      .setColor("#ff3333");
+
+    channel.send({ embeds: [onErrorEmbed] });
+    return null;
+  } else if (!site) {
     console.log("Text");
     const resTrack = await Track.fromText(text, functionsTrack);
-    const queuedEmbed = new MessageEmbed().setDescription(
-      `Queued [${resTrack?.title}](${resTrack?.url})` || ""
-    );
+    if (resTrack) {
+      const queuedEmbed = new MessageEmbed().setDescription(
+        `Queued [${resTrack?.title}](${resTrack?.url})` || ""
+      );
 
-    channel.send({ embeds: [queuedEmbed] });
-    return resTrack ? [resTrack] : null;
+      channel.send({ embeds: [queuedEmbed] });
+      return [resTrack];
+    } else {
+      const onErrorEmbed = new MessageEmbed()
+        .setTitle("Invalid text")
+        .setDescription(
+          "Invalid text to do a search, please try again with a different text"
+        )
+        .setColor("#ff3333");
+
+      channel.send({ embeds: [onErrorEmbed] });
+      return null;
+    }
   } else if (site === Site.Youtube) {
     console.log("Youtube");
     const resTrack = await Track.fromUrlYoutube(text, functionsTrack);

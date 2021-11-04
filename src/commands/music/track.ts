@@ -77,18 +77,22 @@ export class Track implements TrackData {
   }
 
   private static async getVideo(text: string): Promise<any> {
-    const filters = await ytsr.getFilters(text);
-    const filter = filters.get("Type")?.get("Video");
-    if (filter != null) {
-      const info = await ytsr(filter.url!, { limit: 1 });
-      const videos = info.items as Video[];
-      return {
-        url: videos[0].url,
-        title: videos[0].title,
-        thumbnail: videos[0].bestThumbnail.url,
-      };
+    try {
+      const filters = await ytsr.getFilters(text);
+      const filter = filters.get("Type")?.get("Video");
+      if (filter != null) {
+        const info = await ytsr(filter.url!, { limit: 1 });
+        const videos = info.items as Video[];
+        return {
+          url: videos[0].url,
+          title: videos[0].title,
+          thumbnail: videos[0].bestThumbnail.url,
+        };
+      }
+      return null;
+    } catch (err) {
+      return null;
     }
-    return null;
   }
 
   public static async fromText(
@@ -96,7 +100,9 @@ export class Track implements TrackData {
     methods: functionsTrack
   ): Promise<Track | null> {
     const video = await this.getVideo(text);
-    return new Track(video.url, video.title, video.thumbnail, methods);
+    return video
+      ? new Track(video.url, video.title, video.thumbnail, methods)
+      : null;
   }
 
   public static async fromUrlYoutube(
