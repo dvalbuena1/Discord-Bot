@@ -153,6 +153,7 @@ export class MusicSubscription {
     this.queueLock = true;
     this.queue = [];
     this.audioPlayer.stop(true);
+    if (this.timeOutIdle) clearTimeout(this.timeOutIdle);
     this.queueLock = false;
   }
 
@@ -197,6 +198,23 @@ export class MusicSubscription {
   public jump(newIndex: number): void {
     this.index = newIndex;
     this.processQueue();
+  }
+
+  public remove(index: number, callback: () => void): Track | null {
+    if (
+      this.audioPlayer.state.status === AudioPlayerStatus.Playing &&
+      index === this.index - 1
+    ) {
+      callback();
+      return null;
+    }
+
+    this.queueLock = true;
+    const removed = this.queue.splice(index, 1)[0];
+    if (index < this.index) this.index = this.index - 1;
+    this.queueLock = false;
+
+    return removed;
   }
 
   private async processQueue(): Promise<void> {

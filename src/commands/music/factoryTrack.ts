@@ -1,5 +1,5 @@
 import axios from "axios";
-import { MessageEmbed, TextBasedChannels } from "discord.js";
+import { MessageEmbed, TextBasedChannels, User } from "discord.js";
 import ytpl from "ytpl";
 import { Track } from "./track";
 enum Site {
@@ -43,7 +43,8 @@ const isUrl = (text: string): Site | null => {
 
 export const getTracks = async (
   text: string,
-  channel: TextBasedChannels
+  channel: TextBasedChannels,
+  requestBy: User
 ): Promise<Array<Track> | null> => {
   const site: Site | null = isUrl(text);
   const tracks: Array<Track> = [];
@@ -51,7 +52,9 @@ export const getTracks = async (
     onStart(track: Track) {
       const onStartEmbed = new MessageEmbed()
         .setTitle("Now playing")
-        .setDescription(`[${track?.title}](${track?.url})` || "")
+        .setDescription(
+          `[${track?.title}](${track?.url}) [${track.requestedBy}]` || ""
+        )
         .setThumbnail(track.thumbnail!);
 
       channel.send({ embeds: [onStartEmbed] });
@@ -83,10 +86,15 @@ export const getTracks = async (
     return null;
   } else if (!site) {
     console.log("Text");
-    const resTrack = await Track.fromText(text, functionsTrack);
+    const resTrack = await Track.fromText(
+      text,
+      functionsTrack,
+      requestBy.toString()
+    );
     if (resTrack) {
       const queuedEmbed = new MessageEmbed().setDescription(
-        `Queued [${resTrack?.title}](${resTrack?.url})` || ""
+        `Queued [${resTrack?.title}](${resTrack?.url}) [${resTrack.requestedBy}]` ||
+          ""
       );
 
       channel.send({ embeds: [queuedEmbed] });
@@ -104,7 +112,11 @@ export const getTracks = async (
     }
   } else if (site === Site.Youtube) {
     console.log("Youtube");
-    const resTrack = await Track.fromUrlYoutube(text, functionsTrack);
+    const resTrack = await Track.fromUrlYoutube(
+      text,
+      functionsTrack,
+      requestBy.toString()
+    );
 
     return resTrack ? [resTrack] : null;
   } else if (site === Site.YoutubePlaylist) {
@@ -129,6 +141,7 @@ export const getTracks = async (
         element.url,
         element?.title,
         element.bestThumbnail.url || undefined,
+        requestBy.toString(),
         functionsTrack
       );
       tracks.push(track);
@@ -186,6 +199,7 @@ export const getTracks = async (
           undefined,
           `${element.track.name} - ${artists}`,
           undefined,
+          requestBy.toString(),
           functionsTrack
         );
         tracks.push(track);

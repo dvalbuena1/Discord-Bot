@@ -26,6 +26,9 @@ keys.set("queue", "queue");
 
 keys.set("j", "jump");
 keys.set("jump", "jump");
+
+keys.set("r", "remove");
+keys.set("remove", "remove");
 export default class Music implements Command {
   public description;
   public mapQueues: Map<string, MusicSubscription>;
@@ -60,13 +63,16 @@ export default class Music implements Command {
       case "jump":
         this.jumpCommand(message, args);
         break;
+      case "remove":
+        this.removeCommand(message, args);
+        break;
     }
   }
 
   private async playCommand(message: Message, args: string[]): Promise<void> {
     if (message.guildId) {
       const text = args.join(" ");
-      const tracks = await getTracks(text, message.channel);
+      const tracks = await getTracks(text, message.channel, message.author);
       if (tracks) {
         let subscription = this.mapQueues.get(message.guildId);
         if (!subscription) {
@@ -222,6 +228,52 @@ export default class Music implements Command {
           integer >= 0
         ) {
           subscription.jump(integer);
+        } else {
+          const isNaNChannelEmbed = new MessageEmbed()
+            .setDescription("Please enter a valid number!")
+            .setColor("#ff3333");
+
+          await message.channel.send({ embeds: [isNaNChannelEmbed] });
+        }
+      } else {
+        const notVoiceChannelEmbed = new MessageEmbed().setDescription(
+          "I'm not in the voice channel right now"
+        );
+
+        await message.channel.send({ embeds: [notVoiceChannelEmbed] });
+      }
+    }
+  }
+
+  private async removeCommand(message: Message, args: string[]): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        const text = args[0];
+        const integer = parseInt(text, 10) - 1;
+
+        if (
+          !isNaN(integer) &&
+          integer < subscription.queue.length &&
+          integer >= 0
+        ) {
+          const error = async () => {
+            const isActualIndexChannelEmbed = new MessageEmbed()
+              .setDescription("It is not possible to remove the current song!")
+              .setColor("#ff3333");
+
+            await message.channel.send({ embeds: [isActualIndexChannelEmbed] });
+          };
+          const track = subscription.remove(integer, error);
+
+          if (track) {
+            const removedEmbed = new MessageEmbed().setDescription(
+              `Removed [${track.title}](${track.url}) [${track.requestedBy}]` ||
+                ""
+            );
+
+            await message.channel.send({ embeds: [removedEmbed] });
+          }
         } else {
           const isNaNChannelEmbed = new MessageEmbed()
             .setDescription("Please enter a valid number!")

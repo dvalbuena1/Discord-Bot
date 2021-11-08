@@ -10,6 +10,7 @@ interface TrackData {
   url: string | undefined;
   thumbnail: string | undefined;
   title: string;
+  requestedBy: string;
   onStart: () => void;
   onFinish: () => void;
   onError: (error: Error) => void;
@@ -25,6 +26,7 @@ export class Track implements TrackData {
   public url: string | undefined;
   public thumbnail: string | undefined;
   public title: string;
+  public requestedBy: string;
   public readonly onStart: () => void;
   public readonly onFinish: () => void;
   public readonly onError: (error: Error) => void;
@@ -33,11 +35,13 @@ export class Track implements TrackData {
     url: string | undefined,
     title: string,
     thumbnail: string | undefined,
+    requestedBy: string,
     { onStart, onFinish, onError }: functionsTrack
   ) {
     this.url = url;
     this.title = title;
     this.thumbnail = thumbnail;
+    this.requestedBy = requestedBy;
     this.onStart = () => onStart(this);
     this.onFinish = () => onFinish(this);
     this.onError = (error) => onError(this, error);
@@ -97,23 +101,26 @@ export class Track implements TrackData {
 
   public static async fromText(
     text: string,
-    methods: functionsTrack
+    methods: functionsTrack,
+    requestBy: string
   ): Promise<Track | null> {
     const video = await this.getVideo(text);
     return video
-      ? new Track(video.url, video.title, video.thumbnail, methods)
+      ? new Track(video.url, video.title, video.thumbnail, requestBy, methods)
       : null;
   }
 
   public static async fromUrlYoutube(
     url: string,
-    methods: functionsTrack
+    methods: functionsTrack,
+    requestBy: string
   ): Promise<Track | null> {
     const info = await ytdl.getInfo(url);
     return new Track(
       info.videoDetails.video_url,
       info.videoDetails.title,
       info.videoDetails.thumbnails[0].url,
+      requestBy,
       methods
     );
   }
