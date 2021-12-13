@@ -11,6 +11,7 @@ interface TrackData {
   thumbnail: string | undefined;
   title: string;
   requestedBy: string;
+  duration: string | undefined;
   onStart: () => void;
   onFinish: () => void;
   onError: (error: Error) => void;
@@ -27,6 +28,7 @@ export class Track implements TrackData {
   public thumbnail: string | undefined;
   public title: string;
   public requestedBy: string;
+  public duration: string | undefined;
   public readonly onStart: () => void;
   public readonly onFinish: () => void;
   public readonly onError: (error: Error) => void;
@@ -72,6 +74,7 @@ export class Track implements TrackData {
           this.title = video.title;
           this.url = video.url;
           this.thumbnail = video.thumbnail;
+          this.duration = video.duration;
           audioResource();
         });
       } else {
@@ -91,6 +94,7 @@ export class Track implements TrackData {
           url: videos[0].url,
           title: videos[0].title,
           thumbnail: videos[0].bestThumbnail.url,
+          duration: videos[0].duration,
         };
       }
       return null;

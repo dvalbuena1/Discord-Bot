@@ -17,14 +17,18 @@ export class MusicSubscription {
   public readonly voiceConnection: VoiceConnection;
   public readonly audioPlayer: AudioPlayer;
   public readonly voiceChannel: VoiceChannel;
-  public leaveChannel: () => void;
-  public queueLock = false;
-  public readyLock = false;
-  public loop = false;
+  public readonly leaveChannel: () => void;
   public queue: Track[];
   public index: number;
-  public timeOutIdle: NodeJS.Timeout | undefined;
-  public timeOutAlone: NodeJS.Timeout | undefined;
+  private timeOutIdle: NodeJS.Timeout | undefined;
+  private timeOutAlone: NodeJS.Timeout | undefined;
+  private readyLock = false;
+  private queueLock = false;
+  private loop = false;
+  private limitQueue = 10;
+  private offsetQueue = 0;
+  private maxPage = 0;
+
   public constructor(
     voiceConnection: VoiceConnection,
     leaveChannel: () => void,
@@ -177,13 +181,19 @@ export class MusicSubscription {
 
   public getQueue(): string {
     let resQueue = "";
-    for (let index = 0; index < this.queue.length; index++) {
+    const indexStart = this.limitQueue * this.offsetQueue;
+    let countLoop = 0;
+    for (
+      let index = indexStart;
+      index < indexStart + this.limitQueue && index < this.queue.length;
+      index++
+    ) {
       const element = this.queue[index];
       const concat = `${index + 1}) ${
         element.title.length > 38
-          ? element.title.slice(0, 37).trim() + "…"
-          : element.title
-      } \n`;
+          ? element.title.slice(0, 37) + "…"
+          : element.title + " ".repeat(38 - element.title.length)
+      } ${element.duration ? element.duration : ""} \n`;
       if (this.index - 1 === index) {
         resQueue += "     ⬐ current track \n";
         resQueue += concat;
@@ -191,8 +201,36 @@ export class MusicSubscription {
       } else {
         resQueue += concat;
       }
+      countLoop++;
+    }
+    if (countLoop < this.limitQueue)
+      resQueue += "\n".repeat(this.limitQueue - countLoop);
+    if (this.offsetQueue === this.maxPage) {
+      resQueue += "\n\n  This is the end of the queue!";
+    } else {
+      const remaining = this.queue.length - indexStart - this.limitQueue;
+      resQueue += `\n\n  ${remaining} more track(s)`;
     }
     return resQueue;
+  }
+
+  public resetQueueList(): void {
+    this.offsetQueue = Math.ceil(this.index / this.limitQueue) - 1;
+    this.maxPage = Math.ceil(this.queue.length / this.limitQueue) - 1;
+  }
+  public firstQueueList(): void {
+    this.offsetQueue = 0;
+  }
+  public backQueueList(): void {
+    this.offsetQueue--;
+    if (this.offsetQueue < 0) this.offsetQueue = 0;
+  }
+  public nextQueueList(): void {
+    this.offsetQueue++;
+    if (this.offsetQueue > this.maxPage) this.offsetQueue = this.maxPage;
+  }
+  public lastQueueList(): void {
+    this.offsetQueue = this.maxPage;
   }
 
   public jump(newIndex: number): void {

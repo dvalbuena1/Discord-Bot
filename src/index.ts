@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 global.AbortController = require("abort-controller");
-import { Intents, Collection, Client, Message } from "discord.js";
+import { Intents, Collection, Client, Message, Interaction } from "discord.js";
 import { Command } from "./commands/comands.interface";
 import keys from "./commands/mapKeys";
 dotenv.config();
@@ -43,6 +43,13 @@ client.on("messageCreate", (message: Message) => {
   if (command) {
     command = keys.get(command) || "";
     commands.get(command)?.execute(message, args);
+  }
+});
+
+client.on("interactionCreate", (interaction: Interaction) => {
+  if (interaction.isButton()) {
+    const Id: string[] = interaction.customId.split("?");
+    commands.get(Id[0])?.handleButtons(interaction);
   }
 });
 

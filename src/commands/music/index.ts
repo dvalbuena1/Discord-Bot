@@ -1,5 +1,13 @@
 import { joinVoiceChannel } from "@discordjs/voice";
-import { GuildMember, Message, MessageEmbed, VoiceChannel } from "discord.js";
+import {
+  ButtonInteraction,
+  GuildMember,
+  Message,
+  MessageActionRow,
+  MessageButton,
+  MessageEmbed,
+  VoiceChannel,
+} from "discord.js";
 import Collection from "@discordjs/collection";
 import { Command } from "../comands.interface";
 import { MusicSubscription } from "./suscription";
@@ -29,12 +37,16 @@ keys.set("jump", "jump");
 
 keys.set("r", "remove");
 keys.set("remove", "remove");
+
+const regexButton = /(\w+)\?(\d+)\.(\w+)\$(\d+)/;
 export default class Music implements Command {
   public description;
   public mapQueues: Map<string, MusicSubscription>;
+  public validButtons: Map<string, string>;
 
   public constructor() {
     this.mapQueues = new Map();
+    this.validButtons = new Map();
     this.description = "play some music";
   }
 
@@ -66,6 +78,37 @@ export default class Music implements Command {
       case "remove":
         this.removeCommand(message, args);
         break;
+    }
+  }
+
+  public async handleButtons(
+    buttonInteraction: ButtonInteraction
+  ): Promise<void> {
+    const regexCustomId = regexButton.exec(buttonInteraction.customId);
+    if (regexCustomId) {
+      const subscription = this.mapQueues.get(regexCustomId[2]);
+      const validCustomId = this.validButtons.get(regexCustomId[3]);
+      if (subscription && validCustomId === buttonInteraction.customId) {
+        const message = buttonInteraction.message as Message;
+        switch (regexCustomId[3]) {
+          case "first":
+            subscription.firstQueueList();
+            break;
+          case "next":
+            subscription.nextQueueList();
+            break;
+          case "back":
+            subscription.backQueueList();
+            break;
+          case "last":
+            subscription.lastQueueList();
+            break;
+        }
+        await message.edit({
+          content: `\`\`\`nim\n${subscription.getQueue()} \`\`\``,
+        });
+        await buttonInteraction.deferUpdate();
+      }
     }
   }
 
@@ -203,8 +246,39 @@ export default class Music implements Command {
     if (message.guildId) {
       const subscription = this.mapQueues.get(message.guildId);
       if (subscription) {
+        subscription.resetQueueList();
         const queue = subscription.getQueue();
-        await message.channel.send(`\`\`\`js\n${queue} \`\`\``);
+        const timestamp = Date.now();
+        const first = new MessageButton()
+          .setCustomId(`Music?${message.guildId}.first$${timestamp}`)
+          .setLabel("First")
+          .setStyle("SECONDARY");
+        this.validButtons.set("first", first.customId!);
+        const back = new MessageButton()
+          .setCustomId(`Music?${message.guildId}.back$${timestamp}`)
+          .setLabel("Back")
+          .setStyle("SECONDARY");
+        this.validButtons.set("back", back.customId!);
+        const next = new MessageButton()
+          .setCustomId(`Music?${message.guildId}.next$${timestamp}`)
+          .setLabel("Next")
+          .setStyle("SECONDARY");
+        this.validButtons.set("next", next.customId!);
+        const last = new MessageButton()
+          .setCustomId(`Music?${message.guildId}.last$${timestamp}`)
+          .setLabel("Last")
+          .setStyle("SECONDARY");
+        this.validButtons.set("last", last.customId!);
+        const row = new MessageActionRow().addComponents([
+          first,
+          back,
+          next,
+          last,
+        ]);
+        await message.channel.send({
+          content: `\`\`\`nim\n${queue} \`\`\``,
+          components: [row],
+        });
       } else {
         const notVoiceChannelEmbed = new MessageEmbed().setDescription(
           "I'm not in the voice channel right now"

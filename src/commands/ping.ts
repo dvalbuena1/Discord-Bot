@@ -1,4 +1,4 @@
-import { Message } from "discord.js";
+import { ButtonInteraction, Message } from "discord.js";
 import { Command } from "./comands.interface";
 
 export default class Ping implements Command {
@@ -8,5 +8,10 @@ export default class Ping implements Command {
   }
   public async execute(message: Message, args: string[]): Promise<void> {
     await message.channel.send("pong!");
+  }
+  public async handleButtons(
+    buttonInteraction: ButtonInteraction
+  ): Promise<void> {
+    return;
   }
 }
