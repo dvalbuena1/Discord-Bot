@@ -18,6 +18,8 @@ keys.set("j", "Music");
 keys.set("jump", "Music");
 keys.set("r", "Music");
 keys.set("remove", "Music");
+keys.set("ps", "Music");
+keys.set("pause", "Music");
 //Ping commands
 keys.set("ping", "Ping");
 

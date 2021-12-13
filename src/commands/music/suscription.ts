@@ -124,7 +124,10 @@ export class MusicSubscription {
           clearTimeout(this.timeOutAlone);
         }
         void this.processQueue();
-      } else if (newState.status === AudioPlayerStatus.Playing) {
+      } else if (
+        newState.status === AudioPlayerStatus.Playing &&
+        oldState.status !== AudioPlayerStatus.Paused
+      ) {
         // If the Playing state has been entered, then a new track has started playback.
         (newState.resource as AudioResource<Track>).metadata.onStart();
       }
@@ -253,6 +256,13 @@ export class MusicSubscription {
     this.queueLock = false;
 
     return removed;
+  }
+
+  public pause(): boolean {
+    return this.audioPlayer.pause();
+  }
+  public play(): boolean {
+    return this.audioPlayer.unpause();
   }
 
   private async processQueue(): Promise<void> {
