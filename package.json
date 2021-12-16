@@ -6,13 +6,13 @@
   "scripts": {
     "start": "npx node dist/index",
     "dev": "nodemon src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "build": "tsc && npx node dist/index"
   },
   "keywords": [
-    "discord"
+    "discord",
+    "bot"
   ],
   "author": "Daniel Valbuena Bautista",
   "license": "ISC",
@@ -25,14 +25,10 @@
     "discord-api-types": "^0.23.1",
     "discord.js": "^13.1.0",
     "dotenv": "^10.0.0",
-    "ffmpeg-static": "^4.4.0",
-    "libsodium-wrappers": "^0.7.9",
     "node": "^14.18.0",
-    "opusscript": "0.0.8",
     "sodium": "^3.0.2",
-    "tweetnacl": "^1.0.3",
     "typescript": "^4.4.3",
-    "ytdl-core": "^4.9.1",
+    "ytdl-core": "^4.9.2",
     "ytpl": "^2.2.3",
     "ytsr": "^3.5.3"
   },
