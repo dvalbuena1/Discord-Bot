@@ -52,7 +52,10 @@ export class Track implements TrackData {
   public createAudioResource(): Promise<AudioResource<Track>> {
     return new Promise((resolve, reject) => {
       const audioResource = () => {
-        const stream = ytdl(this.url!, { filter: "audioonly", dlChunkSize: 0 });
+        const stream = ytdl(this.url!, {
+          filter: "audioonly",
+          dlChunkSize: 0,
+        });
         const onError = (error: Error) => {
           stream.resume();
           reject(error);

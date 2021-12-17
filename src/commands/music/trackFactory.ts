@@ -6,7 +6,8 @@ enum Site {
   Youtube = 1,
   YoutubePlaylist = 2,
   SpotifyPlaylist = 3,
-  Invalid = 4,
+  SpotifyTrack = 4,
+  Invalid = 5,
 }
 const regexYoutubePlaylist1 =
   /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|watch\?.+&v=))((\w|-){11})(?:&list=)((\w|-){18})(?:\S+)?/;
@@ -16,8 +17,11 @@ const regexYoutubePlaylist2 =
 const regexYoutube =
   /(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?/;
 
-const regexSpotify =
+const regexSpotifyPlaylist =
   /(?:https?:\/\/)?(?:www\.)?(?:open\.spotify\.com\/playlist\/)(\w{22})(?:\S+)?/;
+
+const regexSpotifyTrack =
+  /(?:https?:\/\/)?(?:www\.)?(?:open\.spotify\.com\/track\/)(\w{22})(?:\S+)?/;
 
 const regexAnyUrl =
   /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)/;
@@ -31,8 +35,12 @@ const isUrl = (text: string): Site | null => {
     return Site.Youtube;
   }
 
-  if (regexSpotify.test(text)) {
+  if (regexSpotifyPlaylist.test(text)) {
     return Site.SpotifyPlaylist;
+  }
+
+  if (regexSpotifyTrack.test(text)) {
+    return Site.SpotifyTrack;
   }
 
   if (regexAnyUrl.test(text)) {
@@ -153,7 +161,7 @@ export const getTracks = async (
     await channel.send({ embeds: [onQueuedEmbed] });
     return tracks;
   } else if (site === Site.SpotifyPlaylist) {
-    const idPlaylist = regexSpotify.exec(text)![1];
+    const idPlaylist = regexSpotifyPlaylist.exec(text)![1];
 
     const encode = Buffer.from(
       `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
@@ -210,6 +218,51 @@ export const getTracks = async (
 
       await channel.send({ embeds: [onQueuedEmbed] });
       return tracks;
+    } catch (error) {
+      console.log("Error Spotify");
+    }
+  } else if (site === Site.SpotifyTrack) {
+    const idTrack = regexSpotifyTrack.exec(text)![1];
+
+    const encode = Buffer.from(
+      `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
+    ).toString("base64");
+    try {
+      const params = new URLSearchParams();
+      params.append("grant_type", "client_credentials");
+      const resAuth = await axios.post(
+        "https://accounts.spotify.com/api/token",
+        params,
+        {
+          headers: {
+            Authorization: `Basic ${encode}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+      const bearer = (resAuth.data as any).access_token;
+
+      const resTrack: any = await axios.get(
+        `https://api.spotify.com/v1/tracks/${idTrack}`,
+        {
+          headers: {
+            Authorization: `Bearer ${bearer}`,
+          },
+        }
+      );
+      const artists = (resTrack.data.artists as Array<any>)
+        .map((e) => e.name)
+        .join(", ");
+
+      const track = new Track(
+        undefined,
+        `${resTrack.data.name} - ${artists}`,
+        undefined,
+        requestBy.toString(),
+        functionsTrack
+      );
+
+      return [track];
     } catch (error) {
       console.log("Error Spotify");
     }

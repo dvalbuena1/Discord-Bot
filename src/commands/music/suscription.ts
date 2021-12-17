@@ -137,8 +137,12 @@ export class MusicSubscription {
     voiceConnection.subscribe(this.audioPlayer);
   }
 
-  public enqueue(track: Track): void {
-    this.queue.push(track);
+  public enqueue(track: Track[], playNext: boolean): void {
+    if (playNext) {
+      this.queue.splice(this.index, 0, ...track);
+    } else {
+      this.queue = this.queue.concat(track);
+    }
     if (this.audioPlayer.state.status === AudioPlayerStatus.Idle) {
       this.processQueue();
     }
@@ -301,6 +305,12 @@ export class MusicSubscription {
     return this.audioPlayer.unpause();
   }
 
+  public clear(): void {
+    this.audioPlayer.stop(true);
+    this.queue = [];
+    this.index = 0;
+  }
+
   private async processQueue(): Promise<void> {
     // If the queue is locked (already being processed)
     if (this.queueLock) {
@@ -333,6 +343,7 @@ export class MusicSubscription {
       this.index++;
     } catch (error) {
       // If an error occurred, try the next item of the queue instead
+      console.log(error);
       nextTrack.onError(error as Error);
       this.queueLock = false;
       this.index++;

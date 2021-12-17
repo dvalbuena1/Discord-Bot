@@ -12,7 +12,7 @@ import {
 import Collection from "@discordjs/collection";
 import { Command } from "../comands.interface";
 import { MusicSubscription } from "./suscription";
-import { getTracks } from "./factoryTrack";
+import { getTracks } from "./trackFactory";
 
 const keys: Collection<string, string> = new Collection<string, string>();
 keys.set("p", "play");
@@ -27,7 +27,7 @@ keys.set("next", "next");
 keys.set("l", "loop");
 keys.set("loop", "loop");
 
-keys.set("s", "shuffle");
+keys.set("sh", "shuffle");
 keys.set("shuffle", "shuffle");
 
 keys.set("q", "queue");
@@ -44,6 +44,12 @@ keys.set("pause", "pause");
 
 keys.set("b", "back");
 keys.set("back", "back");
+
+keys.set("pn", "playnext");
+keys.set("playnext", "playnext");
+
+keys.set("cl", "clear");
+keys.set("clear", "clear");
 
 const regexButton = /(\w+)\?(\d+)\.(\w+)\$(\d+)/;
 export default class Music implements Command {
@@ -62,7 +68,7 @@ export default class Music implements Command {
 
     switch (command) {
       case "play":
-        this.playCommand(message, args);
+        this.playCommand(message, args, false);
         break;
       case "next":
         this.nextCommand(message);
@@ -90,6 +96,13 @@ export default class Music implements Command {
         break;
       case "back":
         this.backCommand(message);
+        break;
+      case "playnext":
+        this.playCommand(message, args, true);
+        break;
+      case "clear":
+        this.clearCommand(message);
+        break;
     }
   }
 
@@ -124,12 +137,16 @@ export default class Music implements Command {
     }
   }
 
-  private async playCommand(message: Message, args: string[]): Promise<void> {
+  private async playCommand(
+    message: Message,
+    args: string[],
+    playNext: boolean
+  ): Promise<void> {
     if (message.guildId) {
       const text = args.join(" ");
       let subscription = this.mapQueues.get(message.guildId);
 
-      if (subscription && !text) {
+      if (subscription && !text && !playNext) {
         if (subscription.play()) await message.react("👌");
         else {
           await this.sendEmbed(message, {
@@ -173,10 +190,9 @@ export default class Music implements Command {
       }
 
       const tracks = await getTracks(text, message.channel, message.author);
+      console.log(tracks);
       if (tracks) {
-        for (const track of tracks) {
-          subscription.enqueue(track);
-        }
+        subscription.enqueue(tracks, playNext);
       } else {
         console.log("Error enqueue");
       }
@@ -402,6 +418,20 @@ export default class Music implements Command {
             description: "No previous songs in the queue",
           });
         }
+      } else {
+        await this.sendEmbed(message, {
+          description: "I'm not in the voice channel right now",
+        });
+      }
+    }
+  }
+
+  private async clearCommand(message: Message): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        subscription.clear();
+        await message.react("👌");
       } else {
         await this.sendEmbed(message, {
           description: "I'm not in the voice channel right now",

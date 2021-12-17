@@ -10,7 +10,7 @@ keys.set("n", "Music");
 keys.set("next", "Music");
 keys.set("l", "Music");
 keys.set("loop", "Music");
-keys.set("s", "Music");
+keys.set("sh", "Music");
 keys.set("shuffle", "Music");
 keys.set("q", "Music");
 keys.set("queue", "Music");
@@ -22,6 +22,10 @@ keys.set("ps", "Music");
 keys.set("pause", "Music");
 keys.set("b", "Music");
 keys.set("back", "Music");
+keys.set("pn", "Music");
+keys.set("playnext", "Music");
+keys.set("cl", "Music");
+keys.set("clear", "Music");
 //Ping commands
 keys.set("ping", "Ping");
 
