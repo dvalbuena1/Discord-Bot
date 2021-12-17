@@ -42,6 +42,9 @@ keys.set("remove", "remove");
 keys.set("ps", "pause");
 keys.set("pause", "pause");
 
+keys.set("b", "back");
+keys.set("back", "back");
+
 const regexButton = /(\w+)\?(\d+)\.(\w+)\$(\d+)/;
 export default class Music implements Command {
   public description;
@@ -85,6 +88,8 @@ export default class Music implements Command {
       case "pause":
         this.pauseCommand(message);
         break;
+      case "back":
+        this.backCommand(message);
     }
   }
 
@@ -182,12 +187,13 @@ export default class Music implements Command {
     if (message.guildId) {
       const subscription = this.mapQueues.get(message.guildId);
       if (subscription) {
-        subscription.next(async () => {
+        if (subscription.next()) {
+          await message.react("👌");
+        } else {
           await this.sendEmbed(message, {
             description: "No more songs left in the queue",
           });
-        });
-        await message.react("👌");
+        }
       } else {
         await this.sendEmbed(message, {
           description: "I'm not in the voice channel right now",
@@ -253,37 +259,43 @@ export default class Music implements Command {
       if (subscription) {
         subscription.resetQueueList();
         const queue = subscription.getQueue();
-        const timestamp = Date.now();
-        const first = new MessageButton()
-          .setCustomId(`Music?${message.guildId}.first$${timestamp}`)
-          .setLabel("First")
-          .setStyle("SECONDARY");
-        this.validButtons.set("first", first.customId!);
-        const back = new MessageButton()
-          .setCustomId(`Music?${message.guildId}.back$${timestamp}`)
-          .setLabel("Back")
-          .setStyle("SECONDARY");
-        this.validButtons.set("back", back.customId!);
-        const next = new MessageButton()
-          .setCustomId(`Music?${message.guildId}.next$${timestamp}`)
-          .setLabel("Next")
-          .setStyle("SECONDARY");
-        this.validButtons.set("next", next.customId!);
-        const last = new MessageButton()
-          .setCustomId(`Music?${message.guildId}.last$${timestamp}`)
-          .setLabel("Last")
-          .setStyle("SECONDARY");
-        this.validButtons.set("last", last.customId!);
-        const row = new MessageActionRow().addComponents([
-          first,
-          back,
-          next,
-          last,
-        ]);
-        await message.channel.send({
-          content: `\`\`\`nim\n${queue} \`\`\``,
-          components: [row],
-        });
+        if (queue) {
+          const timestamp = Date.now();
+          const first = new MessageButton()
+            .setCustomId(`Music?${message.guildId}.first$${timestamp}`)
+            .setLabel("First")
+            .setStyle("SECONDARY");
+          this.validButtons.set("first", first.customId!);
+          const back = new MessageButton()
+            .setCustomId(`Music?${message.guildId}.back$${timestamp}`)
+            .setLabel("Back")
+            .setStyle("SECONDARY");
+          this.validButtons.set("back", back.customId!);
+          const next = new MessageButton()
+            .setCustomId(`Music?${message.guildId}.next$${timestamp}`)
+            .setLabel("Next")
+            .setStyle("SECONDARY");
+          this.validButtons.set("next", next.customId!);
+          const last = new MessageButton()
+            .setCustomId(`Music?${message.guildId}.last$${timestamp}`)
+            .setLabel("Last")
+            .setStyle("SECONDARY");
+          this.validButtons.set("last", last.customId!);
+          const row = new MessageActionRow().addComponents([
+            first,
+            back,
+            next,
+            last,
+          ]);
+          await message.channel.send({
+            content: `\`\`\`nim\n${queue} \`\`\``,
+            components: [row],
+          });
+        } else {
+          await message.channel.send({
+            content: "```nim\nThe queue is empty ;-; ```",
+          });
+        }
       } else {
         await this.sendEmbed(message, {
           description: "I'm not in the voice channel right now",
@@ -369,6 +381,25 @@ export default class Music implements Command {
         else {
           await this.sendEmbed(message, {
             description: "I'm not playing right now",
+          });
+        }
+      } else {
+        await this.sendEmbed(message, {
+          description: "I'm not in the voice channel right now",
+        });
+      }
+    }
+  }
+
+  private async backCommand(message: Message): Promise<void> {
+    if (message.guildId) {
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        if (subscription.back()) {
+          await message.react("👌");
+        } else {
+          await this.sendEmbed(message, {
+            description: "No previous songs in the queue",
           });
         }
       } else {

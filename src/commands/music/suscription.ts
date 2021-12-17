@@ -144,16 +144,46 @@ export class MusicSubscription {
     }
   }
 
-  public next(callback: () => void): void {
-    if (this.queue.length === this.index) {
+  public next(): boolean {
+    if (!this.loop && this.queue.length === this.index) {
       if (this.audioPlayer.state.status === AudioPlayerStatus.Playing) {
         this.audioPlayer.stop(true);
       } else if (this.audioPlayer.state.status === AudioPlayerStatus.Idle) {
-        callback();
+        return false;
       }
     } else {
       this.processQueue();
     }
+    return true;
+  }
+
+  public back(): boolean {
+    if (this.index === 0) {
+      return false;
+    }
+
+    if (1 !== this.index) {
+      if (this.audioPlayer.state.status === AudioPlayerStatus.Playing) {
+        this.index -= 2;
+        this.processQueue();
+      } else if (this.audioPlayer.state.status === AudioPlayerStatus.Idle) {
+        this.index--;
+        this.processQueue();
+      }
+    } else {
+      if (this.loop) {
+        this.index = this.queue.length - 1;
+        this.processQueue();
+      } else {
+        if (this.audioPlayer.state.status === AudioPlayerStatus.Playing) {
+          return false;
+        } else if (this.audioPlayer.state.status === AudioPlayerStatus.Idle) {
+          this.index--;
+          this.processQueue();
+        }
+      }
+    }
+    return true;
   }
 
   public stop(): void {
@@ -171,9 +201,10 @@ export class MusicSubscription {
 
   public shuffleQueue(): void {
     this.queueLock = true;
-    for (let index = 0; index < this.queue.length; index++) {
+    for (let index = this.index; index < this.queue.length; index++) {
       const randomFloat = Math.random();
-      const randomPos = Math.floor(randomFloat * this.queue.length);
+      const randomPos =
+        Math.floor(randomFloat * (this.queue.length - this.index)) + this.index;
       [this.queue[index], this.queue[randomPos]] = [
         this.queue[randomPos],
         this.queue[index],
@@ -184,35 +215,40 @@ export class MusicSubscription {
 
   public getQueue(): string {
     let resQueue = "";
-    const indexStart = this.limitQueue * this.offsetQueue;
-    let countLoop = 0;
-    for (
-      let index = indexStart;
-      index < indexStart + this.limitQueue && index < this.queue.length;
-      index++
-    ) {
-      const element = this.queue[index];
-      const concat = `${index + 1}) ${
-        element.title.length > 38
-          ? element.title.slice(0, 37) + "…"
-          : element.title + " ".repeat(38 - element.title.length)
-      } ${element.duration ? element.duration : ""} \n`;
-      if (this.index - 1 === index) {
-        resQueue += "     ⬐ current track \n";
-        resQueue += concat;
-        resQueue += "     ⬑ current track \n";
-      } else {
-        resQueue += concat;
+    if (this.queue.length !== 0) {
+      const indexStart = this.limitQueue * this.offsetQueue;
+      let countLoop = 0;
+      for (
+        let index = indexStart;
+        index < indexStart + this.limitQueue && index < this.queue.length;
+        index++
+      ) {
+        const element = this.queue[index];
+        const concat = `${index + 1}) ${
+          element.title.length > 38
+            ? element.title.slice(0, 37) + "…"
+            : element.title + " ".repeat(38 - element.title.length)
+        } ${element.duration ? element.duration : ""} \n`;
+        if (
+          this.index - 1 === index &&
+          this.audioPlayer.state.status === AudioPlayerStatus.Playing
+        ) {
+          resQueue += "     ⬐ current track \n";
+          resQueue += concat;
+          resQueue += "     ⬑ current track \n";
+        } else {
+          resQueue += concat;
+        }
+        countLoop++;
       }
-      countLoop++;
-    }
-    if (countLoop < this.limitQueue)
-      resQueue += "\n".repeat(this.limitQueue - countLoop);
-    if (this.offsetQueue === this.maxPage) {
-      resQueue += "\n\n  This is the end of the queue!";
-    } else {
-      const remaining = this.queue.length - indexStart - this.limitQueue;
-      resQueue += `\n\n  ${remaining} more track(s)`;
+      if (countLoop < this.limitQueue)
+        resQueue += "\n".repeat(this.limitQueue - countLoop);
+      if (this.offsetQueue === this.maxPage) {
+        resQueue += "\n\n  This is the end of the queue!";
+      } else {
+        const remaining = this.queue.length - indexStart - this.limitQueue;
+        resQueue += `\n\n  ${remaining} more track(s)`;
+      }
     }
     return resQueue;
   }
@@ -275,6 +311,7 @@ export class MusicSubscription {
       if (this.loop) {
         this.index = 0;
       } else if (!this.timeOutAlone) {
+        this.audioPlayer.stop(true);
         this.timeOutIdle = setTimeout(this.leaveChannel, 600000);
         return;
       }

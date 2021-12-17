@@ -20,6 +20,8 @@ keys.set("r", "Music");
 keys.set("remove", "Music");
 keys.set("ps", "Music");
 keys.set("pause", "Music");
+keys.set("b", "Music");
+keys.set("back", "Music");
 //Ping commands
 keys.set("ping", "Ping");
 
