@@ -12,7 +12,7 @@ import {
 import Collection from "@discordjs/collection";
 import { Command } from "../comands.interface";
 import { MusicSubscription } from "./suscription";
-import { getTracks } from "./trackFactory";
+import { getTracksFactory } from "./trackFactory";
 
 const keys: Collection<string, string> = new Collection<string, string>();
 keys.set("p", "play");
@@ -64,45 +64,57 @@ export default class Music implements Command {
   }
 
   public async execute(message: Message, args: string[]): Promise<void> {
-    const command = keys.get(args.shift() || "");
+    if (message.guildId) {
+      const command = keys.get(args.shift() || "");
 
-    switch (command) {
-      case "play":
-        this.playCommand(message, args, false);
-        break;
-      case "next":
-        this.nextCommand(message);
-        break;
-      case "disconnect":
-        this.disconnectCommand(message);
-        break;
-      case "loop":
-        this.loopCommand(message);
-        break;
-      case "shuffle":
-        this.shuffleCommand(message);
-        break;
-      case "queue":
-        this.queueCommand(message);
-        break;
-      case "jump":
-        this.jumpCommand(message, args);
-        break;
-      case "remove":
-        this.removeCommand(message, args);
-        break;
-      case "pause":
-        this.pauseCommand(message);
-        break;
-      case "back":
-        this.backCommand(message);
-        break;
-      case "playnext":
-        this.playCommand(message, args, true);
-        break;
-      case "clear":
-        this.clearCommand(message);
-        break;
+      switch (command) {
+        case "play":
+          this.playCommand(message, args, false);
+          return;
+        case "playnext":
+          this.playCommand(message, args, true);
+          return;
+      }
+
+      const subscription = this.mapQueues.get(message.guildId);
+      if (subscription) {
+        switch (command) {
+          case "next":
+            this.nextCommand(message, subscription);
+            break;
+          case "disconnect":
+            this.disconnectCommand(message, subscription);
+            break;
+          case "loop":
+            this.loopCommand(message, subscription);
+            break;
+          case "shuffle":
+            this.shuffleCommand(message, subscription);
+            break;
+          case "queue":
+            this.queueCommand(message, subscription);
+            break;
+          case "jump":
+            this.jumpCommand(message, args, subscription);
+            break;
+          case "remove":
+            this.removeCommand(message, args, subscription);
+            break;
+          case "pause":
+            this.pauseCommand(message, subscription);
+            break;
+          case "back":
+            this.backCommand(message, subscription);
+            break;
+          case "clear":
+            this.clearCommand(message, subscription);
+            break;
+        }
+      } else {
+        await this.sendEmbed(message, {
+          description: "I'm not in the voice channel right now",
+        });
+      }
     }
   }
 
@@ -189,7 +201,11 @@ export default class Music implements Command {
         }
       }
 
-      const tracks = await getTracks(text, message.channel, message.author);
+      const tracks = await getTracksFactory(
+        text,
+        message.channel,
+        message.author
+      );
       console.log(tracks);
       if (tracks) {
         subscription.enqueue(tracks, playNext);
@@ -199,245 +215,186 @@ export default class Music implements Command {
     }
   }
 
-  private async nextCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        if (subscription.next()) {
-          await message.react("👌");
-        } else {
-          await this.sendEmbed(message, {
-            description: "No more songs left in the queue",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async nextCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    if (subscription.next()) {
+      await message.react("👌");
+    } else {
+      await this.sendEmbed(message, {
+        description: "No more songs left in the queue",
+      });
     }
   }
 
-  private async disconnectCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        subscription.voiceConnection.destroy();
-        this.mapQueues.delete(message.guildId);
-        await message.react("👋");
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async disconnectCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    subscription.voiceConnection.destroy();
+    this.mapQueues.delete(message.guildId!);
+    await message.react("👋");
+  }
+
+  private async loopCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    const loop = subscription.loopQueue();
+    if (loop) {
+      await this.sendEmbed(message, {
+        description: "Now looping the **queue**",
+      });
+    } else {
+      await this.sendEmbed(message, {
+        description: "Looping is now **disable**",
+      });
     }
   }
 
-  private async loopCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        const loop = subscription.loopQueue();
-        if (loop) {
-          await this.sendEmbed(message, {
-            description: "Now looping the **queue**",
-          });
-        } else {
-          await this.sendEmbed(message, {
-            description: "Looping is now **disable**",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async shuffleCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    subscription.shuffleQueue();
+    await message.react("🔀");
+  }
+
+  private async queueCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    subscription.resetQueueList();
+    const queue = subscription.getQueue();
+    if (queue) {
+      const timestamp = Date.now();
+      const first = new MessageButton()
+        .setCustomId(`Music?${message.guildId}.first$${timestamp}`)
+        .setLabel("First")
+        .setStyle("SECONDARY");
+      this.validButtons.set("first", first.customId!);
+      const back = new MessageButton()
+        .setCustomId(`Music?${message.guildId}.back$${timestamp}`)
+        .setLabel("Back")
+        .setStyle("SECONDARY");
+      this.validButtons.set("back", back.customId!);
+      const next = new MessageButton()
+        .setCustomId(`Music?${message.guildId}.next$${timestamp}`)
+        .setLabel("Next")
+        .setStyle("SECONDARY");
+      this.validButtons.set("next", next.customId!);
+      const last = new MessageButton()
+        .setCustomId(`Music?${message.guildId}.last$${timestamp}`)
+        .setLabel("Last")
+        .setStyle("SECONDARY");
+      this.validButtons.set("last", last.customId!);
+      const row = new MessageActionRow().addComponents([
+        first,
+        back,
+        next,
+        last,
+      ]);
+      await message.channel.send({
+        content: `\`\`\`nim\n${queue} \`\`\``,
+        components: [row],
+      });
+    } else {
+      await message.channel.send({
+        content: "```nim\nThe queue is empty ;-; ```",
+      });
     }
   }
 
-  private async shuffleCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        subscription.shuffleQueue();
-        await message.react("🔀");
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async jumpCommand(
+    message: Message,
+    args: string[],
+    subscription: MusicSubscription
+  ): Promise<void> {
+    const text = args[0];
+    const integer = parseInt(text, 10) - 1;
+
+    if (
+      !isNaN(integer) &&
+      integer < subscription.queue.length &&
+      integer >= 0
+    ) {
+      subscription.jump(integer);
+    } else {
+      await this.sendEmbed(message, {
+        description: "Please enter a valid number!",
+        color: "#ff3333",
+      });
     }
   }
 
-  private async queueCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        subscription.resetQueueList();
-        const queue = subscription.getQueue();
-        if (queue) {
-          const timestamp = Date.now();
-          const first = new MessageButton()
-            .setCustomId(`Music?${message.guildId}.first$${timestamp}`)
-            .setLabel("First")
-            .setStyle("SECONDARY");
-          this.validButtons.set("first", first.customId!);
-          const back = new MessageButton()
-            .setCustomId(`Music?${message.guildId}.back$${timestamp}`)
-            .setLabel("Back")
-            .setStyle("SECONDARY");
-          this.validButtons.set("back", back.customId!);
-          const next = new MessageButton()
-            .setCustomId(`Music?${message.guildId}.next$${timestamp}`)
-            .setLabel("Next")
-            .setStyle("SECONDARY");
-          this.validButtons.set("next", next.customId!);
-          const last = new MessageButton()
-            .setCustomId(`Music?${message.guildId}.last$${timestamp}`)
-            .setLabel("Last")
-            .setStyle("SECONDARY");
-          this.validButtons.set("last", last.customId!);
-          const row = new MessageActionRow().addComponents([
-            first,
-            back,
-            next,
-            last,
-          ]);
-          await message.channel.send({
-            content: `\`\`\`nim\n${queue} \`\`\``,
-            components: [row],
-          });
-        } else {
-          await message.channel.send({
-            content: "```nim\nThe queue is empty ;-; ```",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
-    }
-  }
+  private async removeCommand(
+    message: Message,
+    args: string[],
+    subscription: MusicSubscription
+  ): Promise<void> {
+    const text = args[0];
+    const integer = parseInt(text, 10) - 1;
 
-  private async jumpCommand(message: Message, args: string[]): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        const text = args[0];
-        const integer = parseInt(text, 10) - 1;
-
-        if (
-          !isNaN(integer) &&
-          integer < subscription.queue.length &&
-          integer >= 0
-        ) {
-          subscription.jump(integer);
-        } else {
-          await this.sendEmbed(message, {
-            description: "Please enter a valid number!",
-            color: "#ff3333",
-          });
-        }
-      } else {
+    if (
+      !isNaN(integer) &&
+      integer < subscription.queue.length &&
+      integer >= 0
+    ) {
+      const error = async () => {
         await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
+          description: "It is not possible to remove the current song!",
           color: "#ff3333",
         });
+      };
+      const track = subscription.remove(integer, error);
+
+      if (track) {
+        await this.sendEmbed(message, {
+          description:
+            `Removed [${track.title}](${track.url}) [${track.requestedBy}]` ||
+            "",
+        });
       }
+    } else {
+      await this.sendEmbed(message, {
+        description: "Please enter a valid number!",
+        color: "#ff3333",
+      });
     }
   }
 
-  private async removeCommand(message: Message, args: string[]): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        const text = args[0];
-        const integer = parseInt(text, 10) - 1;
-
-        if (
-          !isNaN(integer) &&
-          integer < subscription.queue.length &&
-          integer >= 0
-        ) {
-          const error = async () => {
-            await this.sendEmbed(message, {
-              description: "It is not possible to remove the current song!",
-              color: "#ff3333",
-            });
-          };
-          const track = subscription.remove(integer, error);
-
-          if (track) {
-            await this.sendEmbed(message, {
-              description:
-                `Removed [${track.title}](${track.url}) [${track.requestedBy}]` ||
-                "",
-            });
-          }
-        } else {
-          await this.sendEmbed(message, {
-            description: "Please enter a valid number!",
-            color: "#ff3333",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async pauseCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    if (subscription.pause()) await message.react("⏸");
+    else {
+      await this.sendEmbed(message, {
+        description: "I'm not playing right now",
+      });
     }
   }
 
-  private async pauseCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        if (subscription.pause()) await message.react("⏸");
-        else {
-          await this.sendEmbed(message, {
-            description: "I'm not playing right now",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
+  private async backCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    if (subscription.back()) {
+      await message.react("👌");
+    } else {
+      await this.sendEmbed(message, {
+        description: "No previous songs in the queue",
+      });
     }
   }
 
-  private async backCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        if (subscription.back()) {
-          await message.react("👌");
-        } else {
-          await this.sendEmbed(message, {
-            description: "No previous songs in the queue",
-          });
-        }
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
-    }
-  }
-
-  private async clearCommand(message: Message): Promise<void> {
-    if (message.guildId) {
-      const subscription = this.mapQueues.get(message.guildId);
-      if (subscription) {
-        subscription.clear();
-        await message.react("👌");
-      } else {
-        await this.sendEmbed(message, {
-          description: "I'm not in the voice channel right now",
-        });
-      }
-    }
+  private async clearCommand(
+    message: Message,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    subscription.clear();
+    await message.react("👌");
   }
 
   private async sendEmbed(message: Message, options: MessageEmbedOptions) {

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { MessageEmbed, TextBasedChannels, User } from "discord.js";
+import { getPreview, getTracks } from "spotify-url-info";
 import ytpl from "ytpl";
 import { Track } from "./track";
 enum Site {
@@ -49,7 +50,7 @@ const isUrl = (text: string): Site | null => {
   return null;
 };
 
-export const getTracks = async (
+export const getTracksFactory = async (
   text: string,
   channel: TextBasedChannels,
   requestBy: User
@@ -161,51 +162,73 @@ export const getTracks = async (
     await channel.send({ embeds: [onQueuedEmbed] });
     return tracks;
   } else if (site === Site.SpotifyPlaylist) {
-    const idPlaylist = regexSpotifyPlaylist.exec(text)![1];
+    //
+    // **The commented text is the way to use the Spotify API and retrieve the information**
+    //
 
-    const encode = Buffer.from(
-      `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
-    ).toString("base64");
+    // const idPlaylist = regexSpotifyPlaylist.exec(text)![1];
+
+    // const encode = Buffer.from(
+    //   `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
+    // ).toString("base64");
     try {
-      const params = new URLSearchParams();
-      params.append("grant_type", "client_credentials");
-      const resAuth = await axios.post(
-        "https://accounts.spotify.com/api/token",
-        params,
-        {
-          headers: {
-            Authorization: `Basic ${encode}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
-      const bearer = (resAuth.data as any).access_token;
+      //   const params = new URLSearchParams();
+      //   params.append("grant_type", "client_credentials");
+      //   const resAuth = await axios.post(
+      //     "https://accounts.spotify.com/api/token",
+      //     params,
+      //     {
+      //       headers: {
+      //         Authorization: `Basic ${encode}`,
+      //         "Content-Type": "application/x-www-form-urlencoded",
+      //       },
+      //     }
+      //   );
+      //   const bearer = (resAuth.data as any).access_token;
 
-      const resPlaylist = await axios.get(
-        `https://api.spotify.com/v1/playlists/${idPlaylist}`,
-        {
-          headers: {
-            Authorization: `Bearer ${bearer}`,
-          },
-          params: {
-            fields: "tracks(items(track(name, artists(name))))",
-          },
-        }
-      );
+      //   const resPlaylist = await axios.get(
+      //     `https://api.spotify.com/v1/playlists/${idPlaylist}`,
+      //     {
+      //       headers: {
+      //         Authorization: `Bearer ${bearer}`,
+      //       },
+      //       params: {
+      //         fields: "tracks(items(track(name, artists(name))))",
+      //       },
+      //     }
+      //   );
 
-      for (
-        let index = 0;
-        index < (resPlaylist.data as any).tracks.items.length;
-        index++
-      ) {
-        const element = (resPlaylist.data as any).tracks.items[index];
-        const artists = (element.track.artists as Array<any>)
-          .map((e) => e.name)
-          .join(", ");
+      //   for (
+      //     let index = 0;
+      //     index < (resPlaylist.data as any).tracks.items.length;
+      //     index++
+      //   ) {
+      //     const element = (resPlaylist.data as any).tracks.items[index];
+      //     const artists = (element.track.artists as Array<any>)
+      //       .map((e) => e.name)
+      //       .join(", ");
+
+      //     const track = new Track(
+      //       undefined,
+      //       `${element.track.name} - ${artists}`,
+      //       undefined,
+      //       requestBy.toString(),
+      //       functionsTrack
+      //     );
+      //     tracks.push(track);
+      //   }
+      //   const onQueuedEmbed = new MessageEmbed().setDescription(
+      //     `Queued **${(resPlaylist.data as any).tracks.items.length}** tracks`
+      //   );
+
+      const resPlaylist = await getTracks(text);
+      for (let index = 0; index < resPlaylist.length; index++) {
+        const element = resPlaylist[index];
+        const artists = element.artists!.map((e) => e.name).join(", ");
 
         const track = new Track(
           undefined,
-          `${element.track.name} - ${artists}`,
+          `${element.name} - ${artists}`,
           undefined,
           requestBy.toString(),
           functionsTrack
@@ -213,50 +236,63 @@ export const getTracks = async (
         tracks.push(track);
       }
       const onQueuedEmbed = new MessageEmbed().setDescription(
-        `Queued **${(resPlaylist.data as any).tracks.items.length}** tracks`
+        `Queued **${resPlaylist.length}** tracks`
       );
-
       await channel.send({ embeds: [onQueuedEmbed] });
       return tracks;
     } catch (error) {
       console.log("Error Spotify");
     }
   } else if (site === Site.SpotifyTrack) {
-    const idTrack = regexSpotifyTrack.exec(text)![1];
+    //
+    // **The commented text is the way to use the Spotify API and retrieve the information**
+    //
 
-    const encode = Buffer.from(
-      `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
-    ).toString("base64");
+    // const idTrack = regexSpotifyTrack.exec(text)![1];
+
+    // const encode = Buffer.from(
+    //   `${process.env.CLIENT_ID_SPOTIFY}:${process.env.CLIENT_SECRET_SPOTIFY}`
+    // ).toString("base64");
     try {
-      const params = new URLSearchParams();
-      params.append("grant_type", "client_credentials");
-      const resAuth = await axios.post(
-        "https://accounts.spotify.com/api/token",
-        params,
-        {
-          headers: {
-            Authorization: `Basic ${encode}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
-      const bearer = (resAuth.data as any).access_token;
+      //   const params = new URLSearchParams();
+      //   params.append("grant_type", "client_credentials");
+      //   const resAuth = await axios.post(
+      //     "https://accounts.spotify.com/api/token",
+      //     params,
+      //     {
+      //       headers: {
+      //         Authorization: `Basic ${encode}`,
+      //         "Content-Type": "application/x-www-form-urlencoded",
+      //       },
+      //     }
+      //   );
+      //   const bearer = (resAuth.data as any).access_token;
 
-      const resTrack: any = await axios.get(
-        `https://api.spotify.com/v1/tracks/${idTrack}`,
-        {
-          headers: {
-            Authorization: `Bearer ${bearer}`,
-          },
-        }
-      );
-      const artists = (resTrack.data.artists as Array<any>)
-        .map((e) => e.name)
-        .join(", ");
+      //   const resTrack: any = await axios.get(
+      //     `https://api.spotify.com/v1/tracks/${idTrack}`,
+      //     {
+      //       headers: {
+      //         Authorization: `Bearer ${bearer}`,
+      //       },
+      //     }
+      //   );
+      //   const artists = (resTrack.data.artists as Array<any>)
+      //     .map((e) => e.name)
+      //     .join(", ");
 
+      //   const track = new Track(
+      //     undefined,
+      //     `${resTrack.data.name} - ${artists}`,
+      //     undefined,
+      //     requestBy.toString(),
+      //     functionsTrack
+      //   );
+
+      const resTrack = await getPreview(text);
+      const artists = resTrack.artist;
       const track = new Track(
         undefined,
-        `${resTrack.data.name} - ${artists}`,
+        `${resTrack.title} - ${artists}`,
         undefined,
         requestBy.toString(),
         functionsTrack
