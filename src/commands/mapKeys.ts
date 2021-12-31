@@ -20,13 +20,15 @@ keys.set("r", "Music");
 keys.set("remove", "Music");
 keys.set("ps", "Music");
 keys.set("pause", "Music");
+keys.set("unps", "Music");
+keys.set("unpause", "Music");
 keys.set("b", "Music");
 keys.set("back", "Music");
 keys.set("pn", "Music");
 keys.set("playnext", "Music");
 keys.set("cl", "Music");
 keys.set("clear", "Music");
-//Ping commands
-keys.set("ping", "Ping");
+//Info commands
+keys.set("ping", "Info");
 
 export default keys;

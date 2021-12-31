@@ -1,5 +1,11 @@
 import axios from "axios";
-import { MessageEmbed, TextBasedChannels, User } from "discord.js";
+import {
+  CommandInteraction,
+  MessageEmbed,
+  TextBasedChannel,
+  TextBasedChannels,
+  User,
+} from "discord.js";
 import { getPreview, getTracks } from "spotify-url-info";
 import ytpl from "ytpl";
 import { Track } from "./track";
@@ -50,9 +56,17 @@ const isUrl = (text: string): Site | null => {
   return null;
 };
 
+const replyTo = async (
+  channel: TextBasedChannels | CommandInteraction,
+  res: any
+) => {
+  if (channel instanceof CommandInteraction) await channel.editReply(res);
+  else await channel.send(res);
+};
+
 export const getTracksFactory = async (
   text: string,
-  channel: TextBasedChannels,
+  channel: TextBasedChannels | CommandInteraction,
   requestBy: User
 ): Promise<Array<Track> | null> => {
   const site: Site | null = isUrl(text);
@@ -66,7 +80,9 @@ export const getTracksFactory = async (
         )
         .setThumbnail(track.thumbnail!);
 
-      channel.send({ embeds: [onStartEmbed] });
+      const res = { embeds: [onStartEmbed] };
+      if (channel instanceof CommandInteraction) channel.channel?.send(res);
+      else channel.send(res);
     },
     onFinish(track: Track) {
       console.log("Finish");
@@ -78,8 +94,9 @@ export const getTracksFactory = async (
           `[${track?.title}](${track?.url}) \n ${error.message}` || ""
         )
         .setColor("#ff3333");
-
-      channel.send({ embeds: [onErrorEmbed] });
+      const res = { embeds: [onErrorEmbed] };
+      if (channel instanceof CommandInteraction) channel.channel?.send(res);
+      else channel.send(res);
     },
   };
 
@@ -90,8 +107,9 @@ export const getTracksFactory = async (
         "Try with Youtube Videos, Youtube or Spotify Playlist or just text"
       )
       .setColor("#ff3333");
-
-    channel.send({ embeds: [onErrorEmbed] });
+    const res = { embeds: [onErrorEmbed] };
+    if (channel instanceof CommandInteraction) channel.reply(res);
+    else channel.send(res);
     return null;
   } else if (!site) {
     console.log("Text");
@@ -105,8 +123,8 @@ export const getTracksFactory = async (
         `Queued [${resTrack?.title}](${resTrack?.url}) [${resTrack.requestedBy}]` ||
           ""
       );
+      replyTo(channel, { embeds: [queuedEmbed] });
 
-      channel.send({ embeds: [queuedEmbed] });
       return [resTrack];
     } else {
       const onErrorEmbed = new MessageEmbed()
@@ -116,7 +134,7 @@ export const getTracksFactory = async (
         )
         .setColor("#ff3333");
 
-      channel.send({ embeds: [onErrorEmbed] });
+      replyTo(channel, { embeds: [onErrorEmbed] });
       return null;
     }
   } else if (site === Site.Youtube) {
@@ -126,6 +144,12 @@ export const getTracksFactory = async (
       functionsTrack,
       requestBy.toString()
     );
+
+    const queuedEmbed = new MessageEmbed().setDescription(
+      `Queued [${resTrack?.title}](${resTrack?.url}) [${resTrack?.requestedBy}]` ||
+        ""
+    );
+    replyTo(channel, { embeds: [queuedEmbed] });
 
     return resTrack ? [resTrack] : null;
   } else if (site === Site.YoutubePlaylist) {
@@ -140,7 +164,7 @@ export const getTracksFactory = async (
         .setDescription(`${(error as Error).message}` || "")
         .setColor("#ff3333");
 
-      channel.send({ embeds: [onErrorEmbed] });
+      replyTo(channel, { embeds: [onErrorEmbed] });
       return null;
     }
 
@@ -159,7 +183,7 @@ export const getTracksFactory = async (
       `Queued **${tracksResult.items.length}** tracks` || ""
     );
 
-    await channel.send({ embeds: [onQueuedEmbed] });
+    replyTo(channel, { embeds: [onQueuedEmbed] });
     return tracks;
   } else if (site === Site.SpotifyPlaylist) {
     //
@@ -238,7 +262,7 @@ export const getTracksFactory = async (
       const onQueuedEmbed = new MessageEmbed().setDescription(
         `Queued **${resPlaylist.length}** tracks`
       );
-      await channel.send({ embeds: [onQueuedEmbed] });
+      replyTo(channel, { embeds: [onQueuedEmbed] });
       return tracks;
     } catch (error) {
       console.log("Error Spotify");
@@ -297,6 +321,11 @@ export const getTracksFactory = async (
         requestBy.toString(),
         functionsTrack
       );
+
+      const queuedEmbed = new MessageEmbed().setDescription(
+        `Queued [${track?.title}](${text}) [${track.requestedBy}]` || ""
+      );
+      replyTo(channel, { embeds: [queuedEmbed] });
 
       return [track];
     } catch (error) {

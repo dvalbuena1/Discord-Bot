@@ -306,9 +306,12 @@ export class MusicSubscription {
   }
 
   public clear(): void {
+    this.queueLock = true;
     this.audioPlayer.stop(true);
     this.queue = [];
     this.index = 0;
+    this.queueLock = false;
+    this.processQueue();
   }
 
   private async processQueue(): Promise<void> {

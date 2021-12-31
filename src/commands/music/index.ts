@@ -2,6 +2,7 @@ import { joinVoiceChannel } from "@discordjs/voice";
 import {
   ButtonInteraction,
   GuildMember,
+  CommandInteraction,
   Message,
   MessageActionRow,
   MessageButton,
@@ -10,7 +11,7 @@ import {
   VoiceChannel,
 } from "discord.js";
 import Collection from "@discordjs/collection";
-import { Command } from "../comands.interface";
+import { Command } from "../commands.interface";
 import { MusicSubscription } from "./suscription";
 import { getTracksFactory } from "./trackFactory";
 
@@ -42,6 +43,9 @@ keys.set("remove", "remove");
 keys.set("ps", "pause");
 keys.set("pause", "pause");
 
+keys.set("unps", "unpause");
+keys.set("unpause", "unpause");
+
 keys.set("b", "back");
 keys.set("back", "back");
 
@@ -63,11 +67,15 @@ export default class Music implements Command {
     this.description = "play some music";
   }
 
-  public async execute(message: Message, args: string[]): Promise<void> {
+  public async execute(
+    message: Message | CommandInteraction,
+    command: string,
+    args: string
+  ): Promise<void> {
     if (message.guildId) {
-      const command = keys.get(args.shift() || "");
-
-      switch (command) {
+      if (message instanceof CommandInteraction) await message.deferReply();
+      const commandKey = keys.get(command);
+      switch (commandKey) {
         case "play":
           this.playCommand(message, args, false);
           return;
@@ -78,7 +86,7 @@ export default class Music implements Command {
 
       const subscription = this.mapQueues.get(message.guildId);
       if (subscription) {
-        switch (command) {
+        switch (commandKey) {
           case "next":
             this.nextCommand(message, subscription);
             break;
@@ -102,6 +110,9 @@ export default class Music implements Command {
             break;
           case "pause":
             this.pauseCommand(message, subscription);
+            break;
+          case "unpause":
+            this.unpauseCommand(message, subscription);
             break;
           case "back":
             this.backCommand(message, subscription);
@@ -150,23 +161,12 @@ export default class Music implements Command {
   }
 
   private async playCommand(
-    message: Message,
-    args: string[],
+    message: Message | CommandInteraction,
+    args: string,
     playNext: boolean
   ): Promise<void> {
     if (message.guildId) {
-      const text = args.join(" ");
       let subscription = this.mapQueues.get(message.guildId);
-
-      if (subscription && !text && !playNext) {
-        if (subscription.play()) await message.react("👌");
-        else {
-          await this.sendEmbed(message, {
-            description: "I'm not on pause right now",
-          });
-        }
-        return;
-      }
 
       if (!subscription) {
         if (
@@ -183,10 +183,12 @@ export default class Music implements Command {
             async () => {
               subscription?.voiceConnection.destroy();
               this.mapQueues.delete(message.guildId || "");
-              await this.sendEmbed(message, {
+
+              const embedInnactive = new MessageEmbed({
                 description:
                   "I left the voice channel because I was inactive for too long",
               });
+              await message.channel!.send({ embeds: [embedInnactive] });
             },
             <VoiceChannel>message.member.voice.channel
           );
@@ -202,9 +204,9 @@ export default class Music implements Command {
       }
 
       const tracks = await getTracksFactory(
-        text,
-        message.channel,
-        message.author
+        args,
+        message instanceof Message ? message.channel : message,
+        message instanceof Message ? message.author : message.user
       );
       console.log(tracks);
       if (tracks) {
@@ -216,11 +218,11 @@ export default class Music implements Command {
   }
 
   private async nextCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     if (subscription.next()) {
-      await message.react("👌");
+      await this.reactMessage(message, "👌");
     } else {
       await this.sendEmbed(message, {
         description: "No more songs left in the queue",
@@ -229,16 +231,16 @@ export default class Music implements Command {
   }
 
   private async disconnectCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     subscription.voiceConnection.destroy();
     this.mapQueues.delete(message.guildId!);
-    await message.react("👋");
+    await this.reactMessage(message, "👋");
   }
 
   private async loopCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     const loop = subscription.loopQueue();
@@ -254,15 +256,15 @@ export default class Music implements Command {
   }
 
   private async shuffleCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     subscription.shuffleQueue();
-    await message.react("🔀");
+    await this.reactMessage(message, "🔀");
   }
 
   private async queueCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     subscription.resetQueueList();
@@ -295,24 +297,27 @@ export default class Music implements Command {
         next,
         last,
       ]);
-      await message.channel.send({
+      const queueMessage = {
         content: `\`\`\`nim\n${queue} \`\`\``,
         components: [row],
-      });
+      };
+      if (message instanceof Message) await message.channel.send(queueMessage);
+      else await message.editReply(queueMessage);
     } else {
-      await message.channel.send({
+      const queueMessage = {
         content: "```nim\nThe queue is empty ;-; ```",
-      });
+      };
+      if (message instanceof Message) await message.channel.send(queueMessage);
+      else await message.editReply(queueMessage);
     }
   }
 
   private async jumpCommand(
-    message: Message,
-    args: string[],
+    message: Message | CommandInteraction,
+    args: string,
     subscription: MusicSubscription
   ): Promise<void> {
-    const text = args[0];
-    const integer = parseInt(text, 10) - 1;
+    const integer = parseInt(args, 10) - 1;
 
     if (
       !isNaN(integer) &&
@@ -329,12 +334,11 @@ export default class Music implements Command {
   }
 
   private async removeCommand(
-    message: Message,
-    args: string[],
+    message: Message | CommandInteraction,
+    args: string,
     subscription: MusicSubscription
   ): Promise<void> {
-    const text = args[0];
-    const integer = parseInt(text, 10) - 1;
+    const integer = parseInt(args, 10) - 1;
 
     if (
       !isNaN(integer) &&
@@ -365,23 +369,37 @@ export default class Music implements Command {
   }
 
   private async pauseCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
-    if (subscription.pause()) await message.react("⏸");
-    else {
+    if (subscription.pause()) {
+      await this.reactMessage(message, "⏸");
+    } else {
       await this.sendEmbed(message, {
         description: "I'm not playing right now",
       });
     }
   }
 
+  private async unpauseCommand(
+    message: Message | CommandInteraction,
+    subscription: MusicSubscription
+  ): Promise<void> {
+    if (subscription.play()) {
+      await this.reactMessage(message, "▶");
+    } else {
+      await this.sendEmbed(message, {
+        description: "I'm not on pause right now",
+      });
+    }
+  }
+
   private async backCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     if (subscription.back()) {
-      await message.react("👌");
+      await this.reactMessage(message, "👌");
     } else {
       await this.sendEmbed(message, {
         description: "No previous songs in the queue",
@@ -390,15 +408,28 @@ export default class Music implements Command {
   }
 
   private async clearCommand(
-    message: Message,
+    message: Message | CommandInteraction,
     subscription: MusicSubscription
   ): Promise<void> {
     subscription.clear();
-    await message.react("👌");
+    await this.reactMessage(message, "👌");
   }
 
-  private async sendEmbed(message: Message, options: MessageEmbedOptions) {
+  private async sendEmbed(
+    message: Message | CommandInteraction,
+    options: MessageEmbedOptions
+  ) {
     const embed = new MessageEmbed(options);
-    await message.channel.send({ embeds: [embed] });
+    if (message instanceof Message)
+      await message.channel.send({ embeds: [embed] });
+    else await message.editReply({ embeds: [embed] });
+  }
+
+  private async reactMessage(
+    message: Message | CommandInteraction,
+    reaction: any
+  ) {
+    if (message instanceof Message) await message.react(reaction);
+    else await message.editReply(reaction);
   }
 }
