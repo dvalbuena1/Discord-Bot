@@ -44,7 +44,7 @@ Music bot with the possibility to add new cool features!
 ### Manual
 
 - Install [FFMPEG](https://ffmpeg.org)
-- Clone the repository. (`git clone [dvalbuena1/Discord-Bot (github.com)](https://github.com/dvalbuena1/Discord-Bot)`)
+- Clone the repository. (`git clone https://github.com/dvalbuena1/Discord-Bot`)
 - Rename the `.env.example` as `.env` and fill it
   - `DISCORD_CLIENT_ID` the client id of your Discord Bot
   - `DISCORD_TOKEN` the client secret of your Discord Bot
