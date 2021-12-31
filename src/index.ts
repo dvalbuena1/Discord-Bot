@@ -36,23 +36,23 @@ const loadSlashCommands = async () => {
     console.log("Started refreshing application (/) commands.");
 
     // await axios.put(
-    //   `https://discord.com/api/v9/applications/${process.env.CLIENT_ID_DISCORD}/guilds/${process.env.GUILD}/commands`,
+    //   `https://discord.com/api/v9/applications/${process.env.DISCORD_CLIENT_ID}/guilds/${process.env.GUILD}/commands`,
     //   slashCommands,
     //   {
     //     headers: {
     //       "Content-Type": "application/json",
-    //       Authorization: `Bot ${process.env.TOKEN}`,
+    //       Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
     //     },
     //   }
     // );
 
     await axios.put(
-      `https://discord.com/api/v9/applications/${process.env.CLIENT_ID_DISCORD}/commands`,
+      `https://discord.com/api/v9/applications/${process.env.DISCORD_CLIENT_ID}/commands`,
       slashCommands,
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bot ${process.env.TOKEN}`,
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
         },
       }
     );
@@ -115,4 +115,4 @@ client.on("interactionCreate", (interaction: Interaction) => {
 
 client.on("ready", () => console.log("Ready!"));
 client.on("error", console.warn);
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
