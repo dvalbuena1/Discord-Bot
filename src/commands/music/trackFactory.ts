@@ -6,7 +6,8 @@ import {
   TextBasedChannels,
   User,
 } from "discord.js";
-import { getPreview, getTracks } from "spotify-url-info";
+import fetch from "isomorphic-unfetch";
+import spotify from "spotify-url-info";
 import ytpl from "ytpl";
 import { Track } from "./track";
 enum Site {
@@ -16,6 +17,8 @@ enum Site {
   SpotifyTrack = 4,
   Invalid = 5,
 }
+const Spotify = spotify(fetch);
+
 const regexYoutubePlaylist1 =
   /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|watch\?.+&v=))((\w|-){11})(?:&list=)((\w|-){18})(?:\S+)?/;
 const regexYoutubePlaylist2 =
@@ -245,10 +248,10 @@ export const getTracksFactory = async (
       //     `Queued **${(resPlaylist.data as any).tracks.items.length}** tracks`
       //   );
 
-      const resPlaylist = await getTracks(text);
+      const resPlaylist = await Spotify.getTracks(text);
       for (let index = 0; index < resPlaylist.length; index++) {
         const element = resPlaylist[index];
-        const artists = element.artists!.map((e) => e.name).join(", ");
+        const artists = element.artists!.map((e: any) => e.name).join(", ");
 
         const track = new Track(
           undefined,
@@ -312,7 +315,7 @@ export const getTracksFactory = async (
       //     functionsTrack
       //   );
 
-      const resTrack = await getPreview(text);
+      const resTrack = await Spotify.getPreview(text);
       const artists = resTrack.artist;
       const track = new Track(
         undefined,
