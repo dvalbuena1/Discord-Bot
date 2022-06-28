@@ -11,7 +11,7 @@ Music bot with the possibility to add new cool features!
 
 ## Dependencies
 
-- **Node 14** and why not node 16.6.0 or higher? as specified by Discord.js 13. [The answer](https://github.com/dvalbuena1/Discord-Bot/issues/1)
+- **Node 16**
 - [discord.js](https://github.com/discordjs/discord.js)
 - [@discordjs/voice](https://github.com/discordjs/voice) handle voice request
 - [@discordjs/opus](https://github.com/discordjs/opus) required by @discordjs/voice
