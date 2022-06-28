@@ -1,7 +1,7 @@
 import {
   ApplicationCommandOptionType,
   RESTPostAPIApplicationCommandsJSONBody,
-} from "discord-api-types";
+} from "discord-api-types/v10";
 
 const data: RESTPostAPIApplicationCommandsJSONBody = {
   name: "play",

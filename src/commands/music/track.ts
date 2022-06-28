@@ -55,6 +55,9 @@ export class Track implements TrackData {
         const stream = ytdl(this.url!, {
           filter: "audioonly",
           dlChunkSize: 0,
+          highWaterMark: 1 << 62,
+          liveBuffer: 1 << 62,
+          quality: "lowestaudio",
         });
         const onError = (error: Error) => {
           stream.resume();

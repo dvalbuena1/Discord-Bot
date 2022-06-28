@@ -1,8 +1,7 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs";
-global.AbortController = require("abort-controller");
 import { Intents, Collection, Client, Message, Interaction } from "discord.js";
-import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9";
+import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10";
 import { Command } from "./commands/commands.interface";
 import keys from "./commands/mapKeys";
 import axios from "axios";

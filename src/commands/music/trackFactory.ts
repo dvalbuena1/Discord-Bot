@@ -3,7 +3,6 @@ import {
   CommandInteraction,
   MessageEmbed,
   TextBasedChannel,
-  TextBasedChannels,
   User,
 } from "discord.js";
 import fetch from "isomorphic-unfetch";
@@ -60,7 +59,7 @@ const isUrl = (text: string): Site | null => {
 };
 
 const replyTo = async (
-  channel: TextBasedChannels | CommandInteraction,
+  channel: TextBasedChannel | CommandInteraction,
   res: any
 ) => {
   if (channel instanceof CommandInteraction) await channel.editReply(res);
@@ -69,7 +68,7 @@ const replyTo = async (
 
 export const getTracksFactory = async (
   text: string,
-  channel: TextBasedChannels | CommandInteraction,
+  channel: TextBasedChannel | CommandInteraction,
   requestBy: User
 ): Promise<Array<Track> | null> => {
   const site: Site | null = isUrl(text);
