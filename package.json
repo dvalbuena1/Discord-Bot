@@ -17,7 +17,7 @@
   "author": "dvalbuena1 <dvalbuena2@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@discordjs/opus": "^0.7.0",
+    "@discordjs/opus": "^0.8.0",
     "@discordjs/voice": "^0.10.0",
     "axios": "^0.22.0",
     "discord.js": "^13.8.1",
